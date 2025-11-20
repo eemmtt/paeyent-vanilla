@@ -33,11 +33,12 @@ export interface Model {
   composite_pipeline: GPURenderPipeline;
 
   pointerEventQueue: PointerEvent[];
-  curr_tool: number; //
+  curr_tool: number; //used to index into toolhandlers. See tool.ts
   is_drawing: boolean;
   pos_a: Point;
   pos_b: Point;
   pos_c: Point;
+  pts: Float32Array;
   num_pts: number;
 
   renderQueue: RenderPass[];

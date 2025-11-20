@@ -20,26 +20,27 @@ export const ToolHandlers = [
   polyfan_cancel,
 ] as const;
 
+const PT_STRIDE = 2;
+
 /* POLY LINE */
 function polyline_start(model: Model, event: PointerEvent) {
   model.is_drawing = true;
-  model.pos_a = { x: event.x * model.dpr, y: event.y * model.dpr };
+  model.pts.set([event.x * model.dpr, event.y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
   return;
 }
 function polyline_stop(model: Model, event: PointerEvent) {
   model.renderQueue.push({
     type: "polyline-clear-fg-and-draw-bg",
-    start_pos: model.pos_a,
-    end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+    start_pos: [model.pts[0], model.pts[0 + 1]],
+    end_pos: [event.x * model.dpr, event.y * model.dpr],
   });
 
-  const radius = 15;
-  const dist = Math.sqrt(
-    (event.x * model.dpr - model.pos_a.x) ** 2 +
-      (event.y * model.dpr - model.pos_a.y) ** 2
-  );
-  if (dist <= radius) {
+  const radius_squared = 15 * 15;
+  const dist_squared =
+    (event.x * model.dpr - model.pts[0]) ** 2 +
+    (event.y * model.dpr - model.pts[0 + 1]) ** 2;
+  if (dist_squared <= radius_squared) {
     model.is_drawing = false;
   } else {
     polyline_start(model, event);
@@ -49,8 +50,8 @@ function polyline_stop(model: Model, event: PointerEvent) {
 function polyline_hover(model: Model, event: PointerEvent) {
   model.renderQueue.push({
     type: "polyline-clear-fg-and-draw-fg",
-    start_pos: model.pos_a,
-    end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+    start_pos: [model.pts[0], model.pts[0 + 1]],
+    end_pos: [event.x * model.dpr, event.y * model.dpr],
   });
 }
 function polyline_cancel(model: Model) {
@@ -64,7 +65,7 @@ function polyline_cancel(model: Model) {
 /* POLY FAN */
 function polyfan_start(model: Model, event: PointerEvent) {
   model.is_drawing = true;
-  model.pos_a = { x: event.x * model.dpr, y: event.y * model.dpr };
+  model.pts.set([event.x * model.dpr, event.y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
   return;
 }
@@ -73,28 +74,29 @@ function polyfan_stop(model: Model, event: PointerEvent) {
     // draw line
     model.renderQueue.push({
       type: "polyline-clear-fg-and-draw-bg",
-      start_pos: model.pos_a,
-      end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+      start_pos: [model.pts[0], model.pts[0 + 1]],
+      end_pos: [event.x * model.dpr, event.y * model.dpr],
     });
-    model.pos_b = { x: event.x * model.dpr, y: event.y * model.dpr };
+    // add midpoint
+    model.pts.set([event.x * model.dpr, event.y * model.dpr], 1 * PT_STRIDE);
     model.num_pts = 2;
   } else if (model.num_pts == 2) {
     //draw triangle
     model.renderQueue.push({
       type: "polyfan-clear-fg-and-draw-bg",
-      start_pos: model.pos_a,
-      mid_pos: model.pos_b,
-      end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+      start_pos: [model.pts[0], model.pts[0 + 1]],
+      mid_pos: [model.pts[1 * PT_STRIDE], model.pts[1 * PT_STRIDE + 1]],
+      end_pos: [event.x * model.dpr, event.y * model.dpr],
     });
-    model.pos_b = { x: event.x * model.dpr, y: event.y * model.dpr };
+    //update midpoint
+    model.pts.set([event.x * model.dpr, event.y * model.dpr], 1 * PT_STRIDE);
   }
 
-  const radius = 15;
-  const dist = Math.sqrt(
-    (event.x * model.dpr - model.pos_a.x) ** 2 +
-      (event.y * model.dpr - model.pos_a.y) ** 2
-  );
-  if (dist <= radius) {
+  const radius_squared = 15 * 15;
+  const dist_squared =
+    (event.x * model.dpr - model.pts[0]) ** 2 +
+    (event.y * model.dpr - model.pts[0 + 1]) ** 2;
+  if (dist_squared <= radius_squared) {
     model.is_drawing = false;
     model.num_pts = 0;
   }
@@ -104,15 +106,15 @@ function polyfan_hover(model: Model, event: PointerEvent) {
   if (model.num_pts == 1) {
     model.renderQueue.push({
       type: "polyline-clear-fg-and-draw-fg",
-      start_pos: model.pos_a,
-      end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+      start_pos: [model.pts[0], model.pts[0 + 1]],
+      end_pos: [event.x * model.dpr, event.y * model.dpr],
     });
   } else if (model.num_pts == 2) {
     model.renderQueue.push({
       type: "polyfan-clear-fg-and-draw-fg",
-      start_pos: model.pos_a,
-      mid_pos: model.pos_b,
-      end_pos: { x: event.x * model.dpr, y: event.y * model.dpr },
+      start_pos: [model.pts[0], model.pts[0 + 1]],
+      mid_pos: [model.pts[1 * PT_STRIDE], model.pts[1 * PT_STRIDE + 1]],
+      end_pos: [event.x * model.dpr, event.y * model.dpr],
     });
   }
 }

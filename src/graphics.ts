@@ -36,7 +36,7 @@ export class PolyUniform {
   readonly aligned_size: number;
   readonly bytes_size = 156; // (16*2 + 4 + 3) * sizeof(f32) = 39 * 4 = 156, padded to 160
 
-  // Position offsets (each position is 2 floats)
+  // Position offsets (each position is 2 floats), 16 pts total
   readonly offset_pos_a = 0;
   readonly offset_pos_b = 2;
   readonly offset_pos_c = 4;
@@ -61,14 +61,13 @@ export class PolyUniform {
   readonly offset_line_width = 36;
   readonly offset_canvas_width = 37;
   readonly offset_canvas_height = 38;
-  readonly offset_padding = 39;
 
   data: Float32Array;
 
   constructor(device: GPUDevice, canvas: HTMLCanvasElement) {
-    this.data = new Float32Array(40); // 39 floats + 1 padding for alignment
+    this.data = new Float32Array(39);
     this.data.fill(0);
-    this.data.set([1, 1, 1, 1], this.offset_rgba); // default white
+    this.data.set([1, 1, 1, 1], this.offset_rgba);
     this.data.set([2], this.offset_line_width);
     this.data.set([canvas.width], this.offset_canvas_width);
     this.data.set([canvas.height], this.offset_canvas_height);
@@ -77,165 +76,20 @@ export class PolyUniform {
     this.aligned_size = Math.ceil((40 * 4) / alignment) * alignment;
   }
 
-  // Position setters and getters
-  set_pos_a(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_a);
-  }
-  get_pos_a(): Point {
-    return {
-      x: this.data[this.offset_pos_a],
-      y: this.data[this.offset_pos_a + 1],
-    };
+  set_pos(index: number, pt: [number, number]) {
+    if (index < 0 || index > 15) {
+      throw new Error(`Position index must be 0-15, got ${index}`);
+    }
+    const offset = index * 2;
+    this.data.set(pt, offset);
   }
 
-  set_pos_b(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_b);
-  }
-  get_pos_b(): Point {
-    return {
-      x: this.data[this.offset_pos_b],
-      y: this.data[this.offset_pos_b + 1],
-    };
-  }
-
-  set_pos_c(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_c);
-  }
-  get_pos_c(): Point {
-    return {
-      x: this.data[this.offset_pos_c],
-      y: this.data[this.offset_pos_c + 1],
-    };
-  }
-
-  set_pos_d(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_d);
-  }
-  get_pos_d(): Point {
-    return {
-      x: this.data[this.offset_pos_d],
-      y: this.data[this.offset_pos_d + 1],
-    };
-  }
-
-  set_pos_e(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_e);
-  }
-  get_pos_e(): Point {
-    return {
-      x: this.data[this.offset_pos_e],
-      y: this.data[this.offset_pos_e + 1],
-    };
-  }
-
-  set_pos_f(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_f);
-  }
-  get_pos_f(): Point {
-    return {
-      x: this.data[this.offset_pos_f],
-      y: this.data[this.offset_pos_f + 1],
-    };
-  }
-
-  set_pos_g(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_g);
-  }
-  get_pos_g(): Point {
-    return {
-      x: this.data[this.offset_pos_g],
-      y: this.data[this.offset_pos_g + 1],
-    };
-  }
-
-  set_pos_h(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_h);
-  }
-  get_pos_h(): Point {
-    return {
-      x: this.data[this.offset_pos_h],
-      y: this.data[this.offset_pos_h + 1],
-    };
-  }
-
-  set_pos_i(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_i);
-  }
-  get_pos_i(): Point {
-    return {
-      x: this.data[this.offset_pos_i],
-      y: this.data[this.offset_pos_i + 1],
-    };
-  }
-
-  set_pos_j(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_j);
-  }
-  get_pos_j(): Point {
-    return {
-      x: this.data[this.offset_pos_j],
-      y: this.data[this.offset_pos_j + 1],
-    };
-  }
-
-  set_pos_k(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_k);
-  }
-  get_pos_k(): Point {
-    return {
-      x: this.data[this.offset_pos_k],
-      y: this.data[this.offset_pos_k + 1],
-    };
-  }
-
-  set_pos_l(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_l);
-  }
-  get_pos_l(): Point {
-    return {
-      x: this.data[this.offset_pos_l],
-      y: this.data[this.offset_pos_l + 1],
-    };
-  }
-
-  set_pos_m(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_m);
-  }
-  get_pos_m(): Point {
-    return {
-      x: this.data[this.offset_pos_m],
-      y: this.data[this.offset_pos_m + 1],
-    };
-  }
-
-  set_pos_n(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_n);
-  }
-  get_pos_n(): Point {
-    return {
-      x: this.data[this.offset_pos_n],
-      y: this.data[this.offset_pos_n + 1],
-    };
-  }
-
-  set_pos_o(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_o);
-  }
-  get_pos_o(): Point {
-    return {
-      x: this.data[this.offset_pos_o],
-      y: this.data[this.offset_pos_o + 1],
-    };
-  }
-
-  set_pos_p(pt: Point) {
-    this.data.set([pt.x, pt.y], this.offset_pos_p);
-  }
-  get_pos_p(): Point {
-    return {
-      x: this.data[this.offset_pos_p],
-      y: this.data[this.offset_pos_p + 1],
-    };
+  get_pos(index: number): [number, number] {
+    if (index < 0 || index > 15) {
+      throw new Error(`Position index must be 0-15, got ${index}`);
+    }
+    const offset = index * 2;
+    return [this.data[offset], this.data[offset + 1]];
   }
 
   set_rgba(r: number, g: number, b: number, a: number) {
@@ -269,22 +123,6 @@ export class PolyUniform {
   }
   get_canvas_height(): number {
     return this.data[this.offset_canvas_height];
-  }
-
-  set_pos(index: number, pt: Point) {
-    if (index < 0 || index > 15) {
-      throw new Error(`Position index must be 0-15, got ${index}`);
-    }
-    const offset = index * 2;
-    this.data.set([pt.x, pt.y], offset);
-  }
-
-  get_pos(index: number): Point {
-    if (index < 0 || index > 15) {
-      throw new Error(`Position index must be 0-15, got ${index}`);
-    }
-    const offset = index * 2;
-    return { x: this.data[offset], y: this.data[offset + 1] };
   }
 
   update_dims(width: number, height: number) {
@@ -389,6 +227,7 @@ export async function wgpu_init(dpr: number, canvas: HTMLCanvasElement) {
     pos_a: { x: 0, y: 0 },
     pos_b: { x: 0, y: 0 },
     pos_c: { x: 0, y: 0 },
+    pts: new Float32Array(32), //16 pts in PolyUniform * 2(float/pt)
     num_pts: 0,
     renderQueue: [],
   };
@@ -399,25 +238,25 @@ export async function wgpu_init(dpr: number, canvas: HTMLCanvasElement) {
 export type RenderPass =
   | {
       type: "polyline-clear-fg-and-draw-bg";
-      start_pos: Point;
-      end_pos: Point;
+      start_pos: [number, number];
+      end_pos: [number, number];
     }
   | {
       type: "polyline-clear-fg-and-draw-fg";
-      start_pos: Point;
-      end_pos: Point;
+      start_pos: [number, number];
+      end_pos: [number, number];
     }
   | {
       type: "polyfan-clear-fg-and-draw-bg";
-      start_pos: Point;
-      mid_pos: Point;
-      end_pos: Point;
+      start_pos: [number, number];
+      mid_pos: [number, number];
+      end_pos: [number, number];
     }
   | {
       type: "polyfan-clear-fg-and-draw-fg";
-      start_pos: Point;
-      mid_pos: Point;
-      end_pos: Point;
+      start_pos: [number, number];
+      mid_pos: [number, number];
+      end_pos: [number, number];
     }
   | {
       type: "clear-fg";
@@ -434,8 +273,8 @@ export function render(model: Model) {
     const pass = model.renderQueue[i];
 
     if (pass.type == "polyline-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos_a(pass.start_pos);
-      model.poly_uniform.set_pos_b(pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos);
+      model.poly_uniform.set_pos(1, pass.end_pos);
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -482,8 +321,8 @@ export function render(model: Model) {
     }
 
     if (pass.type == "polyline-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos_a(pass.start_pos);
-      model.poly_uniform.set_pos_b(pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos);
+      model.poly_uniform.set_pos(1, pass.end_pos);
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -512,9 +351,9 @@ export function render(model: Model) {
     }
 
     if (pass.type == "polyfan-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos_a(pass.start_pos);
-      model.poly_uniform.set_pos_b(pass.mid_pos);
-      model.poly_uniform.set_pos_c(pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos);
+      model.poly_uniform.set_pos(1, pass.mid_pos);
+      model.poly_uniform.set_pos(2, pass.end_pos);
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -560,9 +399,9 @@ export function render(model: Model) {
     }
 
     if (pass.type == "polyfan-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos_a(pass.start_pos);
-      model.poly_uniform.set_pos_b(pass.mid_pos);
-      model.poly_uniform.set_pos_c(pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos);
+      model.poly_uniform.set_pos(1, pass.mid_pos);
+      model.poly_uniform.set_pos(2, pass.end_pos);
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
