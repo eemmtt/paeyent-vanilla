@@ -3,6 +3,7 @@ import lineShaderCode from "./shaders/polyline.wgsl?raw";
 import fanShaderCode from "./shaders/polyfan.wgsl?raw";
 
 import { type Model } from "./main";
+import { ToolLookup } from "./tool";
 
 export type Point = {
   x: number;
@@ -382,8 +383,8 @@ export async function wgpu_init(dpr: number, canvas: HTMLCanvasElement) {
     composite_pipeline,
     composite_bindgroup,
 
-    eventQueue: [],
-    curr_tool: "line",
+    pointerEventQueue: [],
+    curr_tool: ToolLookup["polyline"],
     is_drawing: false,
     pos_a: { x: 0, y: 0 },
     pos_b: { x: 0, y: 0 },

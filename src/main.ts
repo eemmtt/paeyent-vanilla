@@ -6,13 +6,7 @@ import {
   type Point,
   type RenderPass,
 } from "./graphics";
-import {
-  type ToolType,
-  tool_start,
-  tool_stop,
-  tool_hover,
-  tool_cancel,
-} from "./tool";
+import { ToolHandlers, ToolLookup, ToolStride } from "./tool";
 
 export interface Model {
   canvas: HTMLCanvasElement;
@@ -38,8 +32,8 @@ export interface Model {
   fan_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
 
-  eventQueue: Event[];
-  curr_tool: ToolType;
+  pointerEventQueue: PointerEvent[];
+  curr_tool: number; //
   is_drawing: boolean;
   pos_a: Point;
   pos_b: Point;
@@ -78,35 +72,19 @@ async function init_model(): Promise<Model> {
 }
 
 function mainloop(model: Model) {
-  for (const event of model.eventQueue) {
-    if (event instanceof PointerEvent) {
-      switch (event.type) {
-        case "pointerdown":
-          {
-            if (!model.is_drawing) {
-              tool_start(model, event);
-            } else {
-              tool_stop(model, event);
-            }
-          }
-          break;
-
-        case "pointermove":
-          {
-            if (model.is_drawing) {
-              tool_hover(model, event);
-            }
-          }
-          break;
-
-        default:
-          {
-          }
-          break;
-      }
+  for (const event of model.pointerEventQueue) {
+    if (event.type == "pointerdown" && !model.is_drawing) {
+      /* Tool Start */
+      ToolHandlers[model.curr_tool * ToolStride](model, event);
+    } else if (event.type == "pointerdown" && model.is_drawing) {
+      /* Tool Stop */
+      ToolHandlers[model.curr_tool * ToolStride + 1](model, event);
+    } else if (event.type == "pointermove" && model.is_drawing) {
+      /* Tool Hover */
+      ToolHandlers[model.curr_tool * ToolStride + 2](model, event);
     }
   }
-  model.eventQueue = [];
+  model.pointerEventQueue = [];
 
   render(model);
   model.renderQueue = [];
@@ -115,24 +93,26 @@ function mainloop(model: Model) {
 }
 
 function onpointerdown(event: Event, model: Model) {
-  model.eventQueue.push(event);
+  model.pointerEventQueue.push(event as PointerEvent);
 }
 
 function onpointermove(event: Event, model: Model) {
   // overwrite repeated pointermoves
   if (
-    model.eventQueue.length != 0 &&
-    model.eventQueue[model.eventQueue.length - 1].type == "pointermove"
+    model.pointerEventQueue.length != 0 &&
+    model.pointerEventQueue[model.pointerEventQueue.length - 1].type ==
+      "pointermove"
   ) {
-    model.eventQueue[model.eventQueue.length - 1] = event;
+    model.pointerEventQueue[model.pointerEventQueue.length - 1] =
+      event as PointerEvent;
     return;
   }
 
-  model.eventQueue.push(event);
+  model.pointerEventQueue.push(event as PointerEvent);
 }
 
 function onpointerup(event: Event, model: Model) {
-  model.eventQueue.push(event);
+  model.pointerEventQueue.push(event as PointerEvent);
 }
 
 function resize_canvas(
@@ -147,7 +127,7 @@ function resize_canvas(
 
 function onresize(model: Model) {
   const dpr = window.devicePixelRatio || 1;
-  model.dpr = dpr * 1; //todo: "factor" out
+  model.dpr = dpr * 1; //TODO: "factor" out
 
   const [new_width, new_height] = resize_canvas(dpr * 1, model.canvas);
   model.poly_uniform.update_dims(new_width, new_height);
@@ -157,22 +137,30 @@ function onkeydown(event: KeyboardEvent, model: Model) {
   if (!event.repeat) {
     //console.log("key pressed: ", event.key);
     if (event.key == "f") {
-      if (model.curr_tool == "fan") {
+      if (model.curr_tool == ToolLookup["polyfan"]) {
         return;
       } else {
-        tool_cancel(model);
-        model.curr_tool = "fan";
+        /* Tool Cleanup */
+        ToolHandlers[model.curr_tool * ToolStride + 3](
+          model,
+          new PointerEvent("dummy")
+        );
+        model.curr_tool = ToolLookup["polyfan"];
         console.log("Fan tool selected");
         return;
       }
     }
 
     if (event.key == "l") {
-      if (model.curr_tool == "line") {
+      if (model.curr_tool == ToolLookup["polyline"]) {
         return;
       } else {
-        tool_cancel(model);
-        model.curr_tool = "line";
+        /* Tool Cleanup */
+        ToolHandlers[model.curr_tool * ToolStride + 3](
+          model,
+          new PointerEvent("dummy")
+        );
+        model.curr_tool = ToolLookup["polyline"];
         console.log("Line tool selected");
         return;
       }
@@ -197,7 +185,7 @@ async function main() {
   model.canvas.addEventListener("pointerdown", (e) => onpointerdown(e, model));
   model.canvas.addEventListener("pointermove", (e) => onpointermove(e, model));
   model.canvas.addEventListener("pointerup", (e) => onpointerup(e, model));
-  window.addEventListener("keydown", (ke) => onkeydown(ke, model));
+  window.addEventListener("keydown", (e) => onkeydown(e, model));
 
   mainloop(model);
 }
