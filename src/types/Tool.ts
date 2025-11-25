@@ -1,12 +1,15 @@
-import { type Model } from "./main";
+import { type Model } from "./Model";
+import { PT_STRIDE } from "./Point";
 
-//TODO: add dots
+//TODO: add brush
+export type ToolType = "polyline" | "polyfan" /*| "brush"*/;
 
-export type ToolType = "polyline" | "polyfan" | "dots";
-export const ToolStride = 4; //each tool implements: start, stop, hover, cancel
+//each tool implements: start, stop, hover, cancel. 4 total.
+export const ToolStride = 4;
 export const ToolLookup = {
   polyline: 0,
   polyfan: 1,
+  //brush: 2,
 } as const;
 
 export const ToolHandlers = [
@@ -18,9 +21,11 @@ export const ToolHandlers = [
   polyfan_stop,
   polyfan_hover,
   polyfan_cancel,
+  //brush_start,
+  //brush_stop,
+  //brush_hover,
+  //brush_cancel,
 ] as const;
-
-const PT_STRIDE = 2;
 
 /* POLY LINE */
 function polyline_start(model: Model, event: PointerEvent) {
@@ -125,3 +130,9 @@ function polyfan_cancel(model: Model) {
     type: "clear-fg",
   });
 }
+
+/* BRUSH */
+//function brush_start(model: Model, event: PointerEvent) {}
+//function brush_stop(model: Model, event: PointerEvent) {}
+//function brush_hover(model: Model, event: PointerEvent) {}
+//function brush_cancel(model: Model) {}

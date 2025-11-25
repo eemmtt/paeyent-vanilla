@@ -1,98 +1,30 @@
 import "./style.css";
-import {
-  PolyUniform,
-  render,
-  wgpu_init,
-  type Point,
-  type RenderPass,
-} from "./graphics";
-import { ToolHandlers, ToolLookup, ToolStride } from "./tool";
-
-export interface Model {
-  canvas: HTMLCanvasElement;
-  format: GPUTextureFormat;
-  device: GPUDevice;
-  surface: GPUCanvasContext;
-  is_surface_configured: Boolean;
-  dpr: number;
-
-  bg_texture: GPUTexture;
-  fg_texture: GPUTexture;
-  an_texture: GPUTexture;
-  bg_texture_view: GPUTextureView;
-  fg_texture_view: GPUTextureView;
-  an_texture_view: GPUTextureView;
-
-  poly_uniform: PolyUniform;
-  poly_buffer: GPUBuffer;
-  poly_bindgroup: GPUBindGroup;
-  composite_bindgroup: GPUBindGroup;
-
-  line_pipeline: GPURenderPipeline;
-  fan_pipeline: GPURenderPipeline;
-  composite_pipeline: GPURenderPipeline;
-
-  pointerEventQueue: PointerEvent[];
-  curr_tool: number; //used to index into toolhandlers. See tool.ts
-  is_drawing: boolean;
-  pos_a: Point;
-  pos_b: Point;
-  pos_c: Point;
-  pts: Float32Array;
-  num_pts: number;
-
-  renderQueue: RenderPass[];
-}
-
-async function init_model(): Promise<Model> {
-  const dpr = window.devicePixelRatio || 1;
-  const canvas = document.querySelector("canvas");
-  if (!canvas) {
-    throw Error("Failed to query canvas");
-  }
-  resize_canvas(dpr, canvas);
-
-  if ("gpu" in navigator) {
-    try {
-      return wgpu_init(dpr, canvas);
-    } catch (e) {
-      console.error(e);
-      throw Error("init_model: Failed to initialize WebGPU context");
-    }
-  } else if ("WebGL2RenderingContext" in window) {
-    throw Error(
-      "init_model: WebGL2 is supported by the browser, but not implemented by Paeyent"
-    );
-  } else if ("CanvasRenderingContext2D" in window) {
-    throw Error(
-      "init_model: Canvas2D is supported by the browser, but not implemented by Paeyent"
-    );
-  } else {
-    throw Error("init_model: No supported rendering context");
-  }
-}
+import { render } from "./graphics-webgpu";
+import { type Point } from "./types/Point";
+import { ToolHandlers, ToolLookup, ToolStride } from "./types/Tool";
+import { type Model, init_model } from "./types/Model";
 
 function mainloop(model: Model) {
+  /* process pointer events */
   for (const event of model.pointerEventQueue) {
     if (event.type == "pointerdown" && !model.is_drawing) {
-      /* Tool Start */
-      ToolHandlers[model.curr_tool * ToolStride](model, event);
+      ToolHandlers[model.curr_tool * ToolStride](model, event); // Tool Start
     } else if (event.type == "pointerdown" && model.is_drawing) {
-      /* Tool Stop */
-      ToolHandlers[model.curr_tool * ToolStride + 1](model, event);
+      ToolHandlers[model.curr_tool * ToolStride + 1](model, event); // Tool Stop
     } else if (event.type == "pointermove" && model.is_drawing) {
-      /* Tool Hover */
-      ToolHandlers[model.curr_tool * ToolStride + 2](model, event);
+      ToolHandlers[model.curr_tool * ToolStride + 2](model, event); // Tool Hover
     }
   }
-  model.pointerEventQueue = [];
+  model.pointerEventQueue = []; //TODO: make fixed size ring buffer
 
+  /* render renderQueue */
   render(model);
-  model.renderQueue = [];
+  model.renderQueue = []; //TODO: make fixed size ring buffer
 
   requestAnimationFrame(() => mainloop(model));
 }
 
+/* EVENT HANDLERS */
 function onpointerdown(event: Event, model: Model) {
   model.pointerEventQueue.push(event as PointerEvent);
 }
@@ -116,10 +48,7 @@ function onpointerup(event: Event, model: Model) {
   model.pointerEventQueue.push(event as PointerEvent);
 }
 
-function resize_canvas(
-  dpr: number,
-  canvas: HTMLCanvasElement
-): [number, number] {
+export function resize_canvas(dpr: number, canvas: HTMLCanvasElement): Point {
   canvas.width = canvas.clientWidth * dpr;
   canvas.height = canvas.clientHeight * dpr;
 
@@ -174,6 +103,7 @@ function onkeydown(event: KeyboardEvent, model: Model) {
 //TODO: add constraints
 //TODO: add end session screen
 async function main() {
+  /* init model */
   let model: Model | null = null;
   try {
     model = await init_model();
@@ -182,12 +112,17 @@ async function main() {
     throw Error("main: failed to initialize model");
   }
 
+  //TODO: function that builds session
+  //
+
+  /* register event listeners */
   window.addEventListener("resize", () => onresize(model));
+  window.addEventListener("keydown", (e) => onkeydown(e, model));
   model.canvas.addEventListener("pointerdown", (e) => onpointerdown(e, model));
   model.canvas.addEventListener("pointermove", (e) => onpointermove(e, model));
   model.canvas.addEventListener("pointerup", (e) => onpointerup(e, model));
-  window.addEventListener("keydown", (e) => onkeydown(e, model));
 
+  /* start update + render loop */
   mainloop(model);
 }
 
