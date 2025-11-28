@@ -23,6 +23,7 @@ export class PolyUniform {
     canvas_width:   f32,     //4
     canvas_height:  f32,     //4
     */
+  // TODO: simplify PolyUniform, prep for brush tool
   /*
     pos_a:      [f32;2],     //8
     pos_b:      [f32;2],     //8
