@@ -3,16 +3,16 @@ import lineShaderCode from "./shaders/polyline.wgsl?raw";
 import fanShaderCode from "./shaders/polyfan.wgsl?raw";
 
 import { type Model } from "./types/Model";
-import { ToolLookup } from "./types/Tool";
 import type { Point } from "./types/Point";
 import { PolyUniform } from "./types/PolyUniform";
+import type { GraphicsModel } from "./types/Graphics";
 
 type FillStyle = "transparent" | "white";
 
 export async function wgpu_init(
   dpr: number,
   canvas: HTMLCanvasElement
-): Promise<Model> {
+): Promise<GraphicsModel> {
   if (!navigator.gpu) {
     throw Error("WebGPU not supported");
   }
@@ -68,7 +68,8 @@ export async function wgpu_init(
   let [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
     create_poly_resources(device, format, poly_uniform);
 
-  let result: Model = {
+  console.log("Intialized WebGPU Context");
+  return {
     canvas,
     format,
     device,
@@ -89,21 +90,12 @@ export async function wgpu_init(
     fan_pipeline,
     composite_pipeline,
     composite_bindgroup,
-
-    pointerEventQueue: [],
-    curr_tool: ToolLookup["polyline"],
-    is_drawing: false,
-    pos_a: [0, 0],
-    pos_b: [0, 0],
-    pos_c: [0, 0],
-    pts: new Float32Array(32), //16 pts in PolyUniform * 2(float/pt)
-    num_pts: 0,
     renderQueue: [],
   };
-  console.log("Intialized WebGPU Context");
-  return result;
 }
 
+//TODO: instead of passing objects around and if/else'ing
+//      in render(), implement as function table
 export type RenderPass =
   | {
       type: "polyline-clear-fg-and-draw-bg";
@@ -129,6 +121,9 @@ export type RenderPass =
     }
   | {
       type: "clear-fg";
+    }
+  | {
+      type: "clear-all";
     };
 
 //TODO: add color
@@ -188,6 +183,7 @@ export function render(model: Model) {
 
       continue;
     }
+    // end polyline-clear-fg-and-draw-bg
 
     if (pass.type == "polyline-clear-fg-and-draw-fg") {
       model.poly_uniform.set_pos(0, pass.start_pos);
@@ -218,6 +214,7 @@ export function render(model: Model) {
       renderpass.end();
       continue;
     }
+    // end polyline-clear-fg-and-draw-fg
 
     if (pass.type == "polyfan-clear-fg-and-draw-bg") {
       model.poly_uniform.set_pos(0, pass.start_pos);
@@ -311,11 +308,47 @@ export function render(model: Model) {
         ],
       });
       renderpass.end();
+
+      continue;
+    }
+
+    if (pass.type == "clear-all") {
+      {
+        const renderpass = encoder.beginRenderPass({
+          label: "FG Clear",
+          colorAttachments: [
+            {
+              view: model.fg_texture_view,
+              clearValue: [0, 0, 0, 0],
+              loadOp: "clear" as GPULoadOp,
+              storeOp: "store" as GPUStoreOp,
+            },
+          ],
+        });
+        renderpass.end();
+      }
+
+      {
+        const renderpass = encoder.beginRenderPass({
+          label: "BG Clear",
+          colorAttachments: [
+            {
+              view: model.bg_texture_view,
+              clearValue: [1, 1, 1, 1],
+              loadOp: "clear" as GPULoadOp,
+              storeOp: "store" as GPUStoreOp,
+            },
+          ],
+        });
+        renderpass.end();
+      }
+
+      continue;
     }
   }
 
+  // always finish with composite pass
   {
-    // always finish with composite pass
     const pass = encoder.beginRenderPass({
       label: "Composite Render Pass",
       colorAttachments: [
