@@ -1,12 +1,20 @@
-import type { SessionOptions, SessionState, Model } from "../types/Model";
+import type { SessionSettings, SessionState, Model } from "../types/Model";
 
 export function menu_build(
-  options: SessionOptions,
-  session_state: SessionState
+  settings: SessionSettings,
+  session_state: SessionState,
+  init_color: Float32Array
 ) {
   const menu_container = document.getElementsByClassName("menu-container")[0];
   if (!menu_container) {
     throw Error("build_menu: Failed to query menu-container");
+  }
+
+  const color_picker_container = document.getElementsByClassName(
+    "color-picker-container"
+  )[0];
+  if (!color_picker_container) {
+    throw Error("color_picker_build: Failed to query color-picker element");
   }
 
   const button_container =
@@ -15,6 +23,11 @@ export function menu_build(
     throw Error("build_menu: Failed to query button-container");
   }
   button_container.innerHTML = "";
+
+  /* color picker */
+  const [color_picker, slider_r, slider_b, slider_g, onSlider] =
+    color_picker_build(settings, init_color);
+  color_picker_container.appendChild(color_picker);
 
   /* menu button */
   const menu_button = document.createElement("button");
@@ -75,7 +88,7 @@ export function menu_build(
     modal_settings_section,
     modal_start_session_button,
     modal_settings_form,
-  ] = settings_build(options);
+  ] = settings_build(settings);
 
   const modal_about_section = about_build();
 
@@ -98,6 +111,7 @@ export function menu_build(
 
   return {
     menu_container,
+    color_picker_container,
     button_container,
     modal_container,
     modal_content,
@@ -116,11 +130,16 @@ export function menu_build(
     brush_button,
     is_modal_open: false,
     UIEventQueue: [],
+    color_picker,
+    slider_r,
+    slider_g,
+    slider_b,
+    onSlider,
   };
 }
 
 function settings_build(
-  session_settings: SessionOptions
+  session_settings: SessionSettings
 ): [HTMLElement, HTMLButtonElement, HTMLFormElement] {
   const section = document.createElement("div");
   section.className = "session-settings-section";
@@ -394,7 +413,7 @@ export function tool_button_build(name: string, label: string, hotkey: string) {
   return button;
 }
 
-export function radio_button_build(
+function radio_button_build(
   value: string,
   label: string,
   group_name: string,
@@ -414,4 +433,64 @@ export function radio_button_build(
   radioWrapper.appendChild(radio);
   radioWrapper.appendChild(labelText);
   return radioWrapper;
+}
+
+function color_picker_build(
+  settings: SessionSettings,
+  init_color: Float32Array
+): [
+  HTMLDivElement,
+  HTMLInputElement,
+  HTMLInputElement,
+  HTMLInputElement,
+  (event: Event, model: Model, color_idx: number) => void
+] {
+  const color_picker = document.createElement("div");
+  if (settings.color_picker_type == "rgb") {
+    color_picker.className = "rgb";
+    color_picker.style.display = "grid";
+    color_picker.style.width = "100%";
+    color_picker.style.grid = "auto-flow repeat(3, 1fr) / 1fr";
+
+    const slider_r = document.createElement("input");
+    slider_r.type = "range";
+    slider_r.min = "0.0";
+    slider_r.max = "1.0";
+    slider_r.step = "any";
+    slider_r.valueAsNumber = init_color[0];
+
+    const slider_g = document.createElement("input");
+    slider_g.type = "range";
+    slider_g.min = "0.0";
+    slider_g.max = "1.0";
+    slider_g.step = "any";
+    slider_g.valueAsNumber = init_color[1];
+
+    const slider_b = document.createElement("input");
+    slider_b.type = "range";
+    slider_b.min = "0.0";
+    slider_b.max = "1.0";
+    slider_b.step = "any";
+    slider_b.valueAsNumber = init_color[2];
+
+    color_picker.appendChild(slider_r);
+    color_picker.appendChild(slider_g);
+    color_picker.appendChild(slider_b);
+
+    const onSlider = (event: Event, model: Model, color_idx: number) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        throw Error("onSliderR: target is not an input element");
+      }
+      model.color[color_idx] = target.valueAsNumber;
+    };
+
+    return [color_picker, slider_r, slider_g, slider_b, onSlider];
+  } else if (settings.color_picker_type == "hsv") {
+    throw Error("color_picker_build: HSV picker not implemented");
+  } else {
+    throw Error(
+      `color_picker_build: Unhandled color picker type ${settings.color_picker_type}`
+    );
+  }
 }

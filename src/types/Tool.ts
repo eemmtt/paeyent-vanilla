@@ -1,7 +1,7 @@
 import { type Model } from "./Model";
 import { PT_STRIDE } from "./Point";
 
-//TODO: add brush
+//TODO: implement brush
 export type ToolType = "polyline" | "polyfan" /*| "brush"*/;
 
 //each tool implements: start, stop, hover, cancel. 4 total.
@@ -52,13 +52,17 @@ function polyline_stop(model: Model, event: PointerEvent) {
   }
   return;
 }
+
 function polyline_hover(model: Model, event: PointerEvent) {
   model.renderQueue.push({
     type: "polyline-clear-fg-and-draw-fg",
-    start_pos: [model.pts[0], model.pts[0 + 1]],
-    end_pos: [event.x * model.dpr, event.y * model.dpr],
+    start_x: model.pts[0],
+    start_y: model.pts[0 + 1],
+    end_x: event.x * model.dpr,
+    end_y: event.y * model.dpr,
   });
 }
+
 function polyline_cancel(model: Model) {
   model.is_drawing = false;
   model.num_pts = 0;
@@ -111,8 +115,10 @@ function polyfan_hover(model: Model, event: PointerEvent) {
   if (model.num_pts == 1) {
     model.renderQueue.push({
       type: "polyline-clear-fg-and-draw-fg",
-      start_pos: [model.pts[0], model.pts[0 + 1]],
-      end_pos: [event.x * model.dpr, event.y * model.dpr],
+      start_x: model.pts[0],
+      start_y: model.pts[0 + 1],
+      end_x: event.x * model.dpr,
+      end_y: event.y * model.dpr,
     });
   } else if (model.num_pts == 2) {
     model.renderQueue.push({

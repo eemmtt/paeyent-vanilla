@@ -37,7 +37,7 @@ canvas {
   border: 2px solid purple;
 }
 
-#color-picker {
+.color-picker-container {
   width: 100%;
   flex: 1;
 

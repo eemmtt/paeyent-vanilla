@@ -1,11 +1,10 @@
 import "./style.css";
-import { render } from "./graphics-webgpu";
 import { type Point } from "./types/Point";
 import { ToolHandlers, ToolLookup, ToolStride } from "./types/Tool";
 import {
   type Model,
   model_init,
-  type SessionOptions,
+  type SessionSettings,
   session_end,
   session_start,
   type SessionState,
@@ -30,7 +29,7 @@ function mainloop(model: Model) {
   }
   model.pointerEventQueue = []; //TODO: make fixed size ring buffer
 
-  /* process menu events */
+  /* process ui events */
   for (const event of model.UIEventQueue) {
     if (event.type == "end-session") {
       session_end(event, model);
@@ -41,7 +40,7 @@ function mainloop(model: Model) {
   model.UIEventQueue = []; //TODO: make fixed size ring buffer
 
   /* render renderQueue */
-  render(model);
+  model.render(model);
   model.renderQueue = []; //TODO: make fixed size ring buffer
 
   requestAnimationFrame(() => mainloop(model));
@@ -212,14 +211,12 @@ function onstartsessionbutton(model: Model) {
   model.scratch_area = scratchAreaRadio.value === "yes";
 
   // TODO: Actually start new session with these options
-  //alert("Todo: Implement transition to new session using SessionOptions");
   model.session_state = "in-session";
   ui_to_inSession(model); //TODO: onstartsession and ui_to_inSession can be combined...
   model.renderQueue.push({ type: "clear-all" });
 }
 
 function onendsessionbutton(event: Event, model: Model) {
-  //alert("TODO: Transition to end session view");
   model.session_state = "end-session" as SessionState;
   ui_to_endSession(model);
 }
@@ -233,13 +230,12 @@ function onsharebutton(event: Event, model: Model) {
 }
 
 //TODO: prevent page refresh
-//TODO: add palette / buttons
+//TODO: add scratch area, color picker
 //TODO: add constraints
-//TODO: add end session screen
 async function main() {
   /* init model */
   //TODO: load options from local storage if exists
-  const options: SessionOptions = {
+  const options: SessionSettings = {
     constraint_type: "none",
     color_picker_type: "rgb",
     scratch_area: false,
@@ -259,8 +255,10 @@ async function main() {
   model.menu_button.addEventListener("pointerdown", (e) =>
     onmenubutton(e, model)
   );
-  model.brush_button.addEventListener("pointerdown", (e) =>
-    ontoolbutton(e, model)
+  model.brush_button.addEventListener(
+    "pointerdown",
+    (e) => {}
+    //ontoolbutton(e, model)
   );
   model.fan_button.addEventListener("pointerdown", (e) =>
     ontoolbutton(e, model)
@@ -299,6 +297,10 @@ async function main() {
   model.modal_share_button.addEventListener("pointerdown", (e) =>
     onsharebutton(e, model)
   );
+
+  model.slider_r.addEventListener("input", (e) => model.onSlider(e, model, 0));
+  model.slider_g.addEventListener("input", (e) => model.onSlider(e, model, 1));
+  model.slider_b.addEventListener("input", (e) => model.onSlider(e, model, 2));
 
   /* start update + render loop */
   mainloop(model);

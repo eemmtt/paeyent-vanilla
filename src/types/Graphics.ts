@@ -1,5 +1,6 @@
 import { wgpu_init, type RenderPass } from "../graphics-webgpu";
 import { resize_canvas } from "../main";
+import type { Model } from "./Model";
 import type { PolyUniform } from "./PolyUniform";
 
 export interface GraphicsModel {
@@ -27,7 +28,10 @@ export interface GraphicsModel {
   fan_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
   renderQueue: RenderPass[];
+  render: RenderFunction;
 }
+
+export type RenderFunction = (model: Model) => void;
 
 export type GraphicsCtxInitializer = (
   dpr: number,

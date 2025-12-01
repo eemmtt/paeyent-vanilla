@@ -1,6 +1,6 @@
 import { type RenderPass } from "../graphics-webgpu";
 import { menu_build } from "../ui/menu";
-import { graphics_build } from "./Graphics";
+import { graphics_build, type RenderFunction } from "./Graphics";
 import type { PolyUniform } from "./PolyUniform";
 
 // TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
@@ -29,6 +29,7 @@ export interface Model {
   fan_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
 
+  render: RenderFunction;
   renderQueue: RenderPass[];
 
   /* drawing state */
@@ -36,10 +37,12 @@ export interface Model {
   is_drawing: boolean;
   pts: Float32Array;
   num_pts: number;
+  color: Float32Array;
   pointerEventQueue: PointerEvent[];
 
   /* menu state */
   menu_container: Element;
+  color_picker_container: Element;
   button_container: Element;
   modal_container: HTMLDivElement;
   modal_content: HTMLDivElement;
@@ -61,6 +64,12 @@ export interface Model {
   is_modal_open: boolean;
   UIEventQueue: UIEvent[];
 
+  color_picker: HTMLDivElement;
+  slider_r: HTMLInputElement;
+  slider_b: HTMLInputElement;
+  slider_g: HTMLInputElement;
+  onSlider: (event: Event, model: Model, color_idx: number) => void;
+
   /* session state */
   session_state: SessionState;
   constraint_type: "none" | "time" | "actions";
@@ -77,7 +86,7 @@ export interface UIEvent {
   type: UIEventType;
 }
 
-export interface SessionOptions {
+export interface SessionSettings {
   constraint_type: "none" | "time" | "actions";
   constraint_time_minutes?: number;
   constraint_time_seconds?: number;
@@ -87,16 +96,21 @@ export interface SessionOptions {
 }
 
 // TODO: use session configuration, build menu-container etc.
-export async function model_init(options: SessionOptions): Promise<Model> {
+export async function model_init(settings: SessionSettings): Promise<Model> {
   const session_state: SessionState = "in-session";
-  const menu_model = menu_build(options, session_state);
+  const rand_r = Math.random();
+  const rand_g = Math.random();
+  const rand_b = Math.random();
+
   const drawing_model = {
     curr_tool: 0,
     is_drawing: false,
     pts: new Float32Array(32),
     num_pts: 0,
+    color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
     pointerEventQueue: [],
   };
+  const menu_model = menu_build(settings, session_state, drawing_model.color);
   const graphics_model = await graphics_build();
 
   return {
@@ -104,7 +118,7 @@ export async function model_init(options: SessionOptions): Promise<Model> {
     ...drawing_model,
     ...menu_model,
     session_state: "in-session",
-    ...options,
+    ...settings,
   };
 }
 

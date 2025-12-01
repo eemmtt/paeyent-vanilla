@@ -2,23 +2,14 @@ struct PolyData {
     pos_a: vec2<f32>,
     pos_b: vec2<f32>,
     pos_c: vec2<f32>,
-    pos_d: vec2<f32>,
-    pos_e: vec2<f32>,
-    pos_f: vec2<f32>,
-    pos_g: vec2<f32>,
-    pos_h: vec2<f32>,
-    pos_i: vec2<f32>,
-    pos_j: vec2<f32>,
-    pos_k: vec2<f32>,
-    pos_l: vec2<f32>,
-    pos_m: vec2<f32>,
-    pos_n: vec2<f32>,
-    pos_o: vec2<f32>,
-    pos_p: vec2<f32>,
-    rgba:  vec4<f32>,
-    line_width:     f32,     
-    canvas_width:   f32,     
-    canvas_height:  f32,     
+    pos_d: vec2<f32>, 
+    rgba:       vec4<f32>,     //16
+    line_width:     f32,     //4
+    canvas_width:   f32,     //4
+    canvas_height:  f32,     //4
+    brush_radius:    f32,     //4
+    brush_softness:  f32,     //4
+    brush_noise_jitter:  f32, //4  
 }
 
 @group(0) @binding(0) var<uniform> poly: PolyData;
@@ -61,7 +52,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     }
 
     output.position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
-    output.color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    output.color = poly.rgba;
 
     return output;
 }

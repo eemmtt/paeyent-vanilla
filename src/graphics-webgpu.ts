@@ -91,6 +91,7 @@ export async function wgpu_init(
     composite_pipeline,
     composite_bindgroup,
     renderQueue: [],
+    render: wgpu_render,
   };
 }
 
@@ -104,8 +105,10 @@ export type RenderPass =
     }
   | {
       type: "polyline-clear-fg-and-draw-fg";
-      start_pos: Point;
-      end_pos: Point;
+      start_x: number;
+      start_y: number;
+      end_x: number;
+      end_y: number;
     }
   | {
       type: "polyfan-clear-fg-and-draw-bg";
@@ -126,8 +129,7 @@ export type RenderPass =
       type: "clear-all";
     };
 
-//TODO: add color
-export function render(model: Model) {
+function wgpu_render(model: Model) {
   let view = model.surface.getCurrentTexture().createView();
   const encoder = model.device.createCommandEncoder({
     label: "Render Encoder",
@@ -137,8 +139,14 @@ export function render(model: Model) {
     const pass = model.renderQueue[i];
 
     if (pass.type == "polyline-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos(0, pass.start_pos);
-      model.poly_uniform.set_pos(1, pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
+      model.poly_uniform.set_pos(1, pass.end_pos[0], pass.end_pos[1]);
+      model.poly_uniform.set_rgba(
+        model.color[0],
+        model.color[1],
+        model.color[2],
+        model.color[3]
+      );
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -186,8 +194,15 @@ export function render(model: Model) {
     // end polyline-clear-fg-and-draw-bg
 
     if (pass.type == "polyline-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos(0, pass.start_pos);
-      model.poly_uniform.set_pos(1, pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_x, pass.start_y);
+      model.poly_uniform.set_pos(1, pass.end_x, pass.end_y);
+      model.poly_uniform.set_rgba(
+        model.color[0],
+        model.color[1],
+        model.color[2],
+        model.color[3]
+      );
+
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -217,9 +232,16 @@ export function render(model: Model) {
     // end polyline-clear-fg-and-draw-fg
 
     if (pass.type == "polyfan-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos(0, pass.start_pos);
-      model.poly_uniform.set_pos(1, pass.mid_pos);
-      model.poly_uniform.set_pos(2, pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
+      model.poly_uniform.set_pos(1, pass.mid_pos[0], pass.mid_pos[1]);
+      model.poly_uniform.set_pos(2, pass.end_pos[0], pass.end_pos[1]);
+      model.poly_uniform.set_rgba(
+        model.color[0],
+        model.color[1],
+        model.color[2],
+        model.color[3]
+      );
+
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
@@ -265,9 +287,16 @@ export function render(model: Model) {
     }
 
     if (pass.type == "polyfan-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos(0, pass.start_pos);
-      model.poly_uniform.set_pos(1, pass.mid_pos);
-      model.poly_uniform.set_pos(2, pass.end_pos);
+      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
+      model.poly_uniform.set_pos(1, pass.mid_pos[0], pass.mid_pos[1]);
+      model.poly_uniform.set_pos(2, pass.end_pos[0], pass.end_pos[1]);
+      model.poly_uniform.set_rgba(
+        model.color[0],
+        model.color[1],
+        model.color[2],
+        model.color[3]
+      );
+
       model.device.queue.writeBuffer(
         model.poly_buffer,
         i * model.poly_uniform.aligned_size,
