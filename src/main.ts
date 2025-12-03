@@ -1,27 +1,29 @@
 import "./style.css";
-import { type Point } from "./types/Point";
-import { ToolHandlers, ToolLookup, ToolStride } from "./types/Tool";
+import { ToolHandlers, ToolStride } from "./types/Tool";
 import { type Model, model_init, type SessionSettings } from "./types/Model";
 import { UIEventHandlers, UIEventLookup } from "./ui/events";
+import { PointerEventLookup, type PointerType } from "./types/PaeyentEvent";
 
 function mainloop(model: Model) {
-  /* process pointer events */
-  for (const event of model.pointerEventQueue) {
-    if (event.type == "pointerdown" && !model.is_drawing) {
-      ToolHandlers[model.curr_tool * ToolStride](model, event); // Tool Start
-    } else if (event.type == "pointerdown" && model.is_drawing) {
-      ToolHandlers[model.curr_tool * ToolStride + 1](model, event); // Tool Stop
-    } else if (event.type == "pointermove" && model.is_drawing) {
-      ToolHandlers[model.curr_tool * ToolStride + 2](model, event); // Tool Hover
+  // loop over events
+  for (let i = 0; i < model.eventQueue.top; i++) {
+    if (model.eventQueue.id[i] === 0) {
+      // PointerEvent
+      ToolHandlers[model.curr_tool * ToolStride + model.eventQueue.type[i]](
+        model,
+        model.eventQueue.dataIdx[i]
+      );
+    } else if (model.eventQueue.id[i] === 1) {
+      // UI event
+      UIEventHandlers[model.eventQueue.type[i]](model);
+    } else {
+      console.warn(
+        `mainloop: Unhandled model.eventQueue.id ${model.eventQueue.id[i]}`
+      );
     }
   }
-  model.pointerEventQueue = []; //TODO: make fixed size ring buffer
-
-  /* process ui events */
-  for (const eventType of model.UIEventQueue) {
-    UIEventHandlers[UIEventLookup[eventType]](model);
-  }
-  model.UIEventQueue = []; //TODO: make fixed size ring buffer
+  model.eventQueue.clear();
+  model.pointerDataQueue.clear();
 
   /* render renderQueue */
   model.render(model);
@@ -32,41 +34,61 @@ function mainloop(model: Model) {
 
 /* window & input handlers */
 function onpointerdown(event: Event, model: Model) {
-  model.pointerEventQueue.push(event as PointerEvent);
+  model.eventQueue.push(
+    0, // PointerEvent
+    PointerEventLookup["pointerdown"],
+    model.pointerDataQueue.push(
+      (event as PointerEvent).x,
+      (event as PointerEvent).y,
+      (event as PointerEvent).pressure,
+      (event as PointerEvent).pointerType as PointerType
+    )
+  );
 }
 
 function onpointermove(event: Event, model: Model) {
   // overwrite repeated pointermoves
   if (
-    model.pointerEventQueue.length != 0 &&
-    model.pointerEventQueue[model.pointerEventQueue.length - 1].type ==
-      "pointermove"
+    model.eventQueue.top > 0 && // array is not empty
+    model.eventQueue.id[model.eventQueue.top - 1] === 1 && // last item is a PointerEvent
+    model.eventQueue.type[model.eventQueue.top - 1] ===
+      PointerEventLookup["pointermove"] // last item is a pointermove event
   ) {
-    model.pointerEventQueue[model.pointerEventQueue.length - 1] =
-      event as PointerEvent;
-    return;
+    model.eventQueue.replaceLast(
+      0, // PointerEvent
+      PointerEventLookup["pointermove"],
+      model.pointerDataQueue.replaceLast(
+        (event as PointerEvent).x,
+        (event as PointerEvent).y,
+        (event as PointerEvent).pressure,
+        (event as PointerEvent).pointerType as PointerType
+      )
+    );
   }
 
-  model.pointerEventQueue.push(event as PointerEvent);
+  model.eventQueue.push(
+    0, // PointerEvent
+    PointerEventLookup["pointermove"],
+    model.pointerDataQueue.push(
+      (event as PointerEvent).x,
+      (event as PointerEvent).y,
+      (event as PointerEvent).pressure,
+      (event as PointerEvent).pointerType as PointerType
+    )
+  );
 }
 
 function onpointerup(event: Event, model: Model) {
-  model.pointerEventQueue.push(event as PointerEvent);
-}
-
-export function resize_canvas(dpr: number, canvas: HTMLCanvasElement): Point {
-  canvas.width = canvas.clientWidth * dpr;
-  canvas.height = canvas.clientHeight * dpr;
-
-  return [canvas.width, canvas.height];
-}
-
-function onresize(model: Model) {
-  const dpr = window.devicePixelRatio || 1;
-  model.dpr = dpr * 1; //TODO: "factor" out
-
-  const [new_width, new_height] = resize_canvas(dpr * 1, model.canvas);
-  model.poly_uniform.update_dims(new_width, new_height);
+  model.eventQueue.push(
+    0, // PointerEvent
+    PointerEventLookup["pointerup"],
+    model.pointerDataQueue.push(
+      (event as PointerEvent).x,
+      (event as PointerEvent).y,
+      (event as PointerEvent).pressure,
+      (event as PointerEvent).pointerType as PointerType
+    )
+  );
 }
 
 function onkeydown(event: KeyboardEvent, model: Model) {
@@ -74,13 +96,29 @@ function onkeydown(event: KeyboardEvent, model: Model) {
     //console.log("key pressed: ", event.key);
 
     if (event.key == "m") {
-      model.UIEventQueue.push("button-menu");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-menu"],
+        -1 // No data
+      );
     } else if (event.key == "f") {
-      model.UIEventQueue.push("button-fan");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-fan"],
+        -1 // No data
+      );
     } else if (event.key == "l") {
-      model.UIEventQueue.push("button-line");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-line"],
+        -1 // No data
+      );
     } else if (event.key == "b") {
-      model.UIEventQueue.push("button-brush");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-brush"],
+        -1 // No data
+      );
     }
   }
 }
@@ -99,7 +137,22 @@ async function main() {
   const model = await model_init(options);
 
   /* register event listeners */
-  window.addEventListener("resize", () => onresize(model));
+  window.addEventListener("resize", () => {
+    // debounce consecutive resize calls, nasty style
+    if (
+      model.eventQueue.top > 0 && // array is not empty
+      model.eventQueue.id[model.eventQueue.top - 1] === 1 && // last item is a UIEvent
+      model.eventQueue.type[model.eventQueue.top - 1] !==
+        UIEventLookup["window-resize"] // last item is not a window-resize event
+    ) {
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["window-resize"],
+        -1 // No data
+      );
+    }
+  });
+
   window.addEventListener("keydown", (e) => onkeydown(e, model));
 
   /* canvas events */
@@ -109,131 +162,227 @@ async function main() {
 
   model.slider_r.addEventListener("input", (e) => {
     if (e.target === model.slider_r) {
-      model.UIEventQueue.push("input-slider-red");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-slider-red"],
+        -1 // No data
+      );
     }
   });
   model.slider_g.addEventListener("input", (e) => {
     if (e.target === model.slider_g) {
-      model.UIEventQueue.push("input-slider-green");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-slider-green"],
+        -1 // No data
+      );
     }
   });
   model.slider_b.addEventListener("input", (e) => {
     if (e.target === model.slider_b) {
-      model.UIEventQueue.push("input-slider-blue");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-slider-blue"],
+        -1 // No data
+      );
     }
   });
 
   /* button-container events */
   model.menu_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.menu_button) {
-      model.UIEventQueue.push("button-menu");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-menu"],
+        -1 // No data
+      );
     }
   });
   model.brush_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.brush_button) {
-      model.UIEventQueue.push("button-brush");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-brush"],
+        -1 // No data
+      );
     }
   });
   model.fan_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.fan_button) {
-      model.UIEventQueue.push("button-fan");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-fan"],
+        -1 // No data
+      );
     }
   });
   model.line_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.line_button) {
-      model.UIEventQueue.push("button-line");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-line"],
+        -1 // No data
+      );
     }
   });
 
   /* modal events */
   model.modal_container.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_container) {
-      model.UIEventQueue.push("button-modal-container");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-modal-container"],
+        -1 // No data
+      );
     }
   });
   model.modal_close_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_close_button) {
-      model.UIEventQueue.push("button-modal-close");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-modal-close"],
+        -1 // No data
+      );
     }
   });
 
   model.radio_constraint_type_none.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_none) {
-      model.UIEventQueue.push("radio-constraint-type-none");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-constraint-type-none"],
+        -1 // No data
+      );
     }
   });
   model.radio_constraint_type_time.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_time) {
-      model.UIEventQueue.push("radio-constraint-type-time");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-constraint-type-time"],
+        -1 // No data
+      );
     }
   });
   model.constraint_type_time_minutes.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_minutes) {
-      model.UIEventQueue.push("input-constraint-time-minutes");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-constraint-time-minutes"],
+        -1 // No data
+      );
     }
   });
   model.constraint_type_time_seconds.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_seconds) {
-      model.UIEventQueue.push("input-constraint-time-seconds");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-constraint-time-seconds"],
+        -1 // No data
+      );
     }
   });
 
   model.radio_constraint_type_actions.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_actions) {
-      model.UIEventQueue.push("radio-constraint-type-actions");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-constraint-type-actions"],
+        -1 // No data
+      );
     }
   });
   model.constraint_type_actions_count.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_actions_count) {
-      model.UIEventQueue.push("input-constraint-actions-count");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["input-constraint-actions-count"],
+        -1 // No data
+      );
     }
   });
 
   model.radio_colorpicker_type_rgb.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_rgb) {
-      model.UIEventQueue.push("radio-colorpicker-type-rgb");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-colorpicker-type-rgb"],
+        -1 // No data
+      );
     }
   });
   model.radio_colorpicker_type_hsv.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_hsv) {
-      model.UIEventQueue.push("radio-colorpicker-type-hsv");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-colorpicker-type-hsv"],
+        -1 // No data
+      );
     }
   });
 
   model.radio_scratch_yes.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_yes) {
-      model.UIEventQueue.push("radio-scratch-yes");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-scratch-yes"],
+        -1 // No data
+      );
     }
   });
   model.radio_scratch_no.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_no) {
-      model.UIEventQueue.push("radio-scratch-no");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["radio-scratch-no"],
+        -1 // No data
+      );
     }
   });
 
   model.modal_start_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_start_session_button) {
-      model.UIEventQueue.push("button-start-session");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-start-session"],
+        -1 // No data
+      );
     }
   });
   model.modal_end_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_end_session_button) {
-      model.UIEventQueue.push("button-end-session");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-end-session"],
+        -1 // No data
+      );
     }
   });
   model.modal_save_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_save_button) {
-      model.UIEventQueue.push("button-save");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-save"],
+        -1 // No data
+      );
     }
   });
   model.modal_share_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_share_button) {
-      model.UIEventQueue.push("button-share");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-share"],
+        -1 // No data
+      );
     }
   });
   model.modal_about_section.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_about_section) {
-      model.UIEventQueue.push("button-about");
+      model.eventQueue.push(
+        1, // UIEvent
+        UIEventLookup["button-about"],
+        -1 // No data
+      );
     }
   });
 

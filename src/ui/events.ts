@@ -1,4 +1,5 @@
 import type { Model } from "../types/Model";
+import type { Point } from "../types/Point";
 import { ToolHandlers, ToolStride } from "../types/Tool";
 
 export type UIEventType =
@@ -25,7 +26,8 @@ export type UIEventType =
   | "input-constraint-actions-count"
   | "input-slider-red"
   | "input-slider-green"
-  | "input-slider-blue";
+  | "input-slider-blue"
+  | "window-resize";
 
 export const UIEventLookup = {
   "button-start-session": 0,
@@ -52,6 +54,7 @@ export const UIEventLookup = {
   "input-slider-red": 21,
   "input-slider-green": 22,
   "input-slider-blue": 23,
+  "window-resize": 24,
 } as const;
 
 export const UIEventHandlers = [
@@ -79,6 +82,7 @@ export const UIEventHandlers = [
   onSliderRed,
   onSliderGreen,
   onSliderBlue,
+  onResize,
 ];
 
 function onButtonStartSession(model: Model) {
@@ -181,7 +185,7 @@ function onButtonLine(model: Model) {
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, model.pointerEventVoid); //Cancel curr tool
+  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 0; //0 is line tool idx
   console.log("Line tool selected");
 }
@@ -192,7 +196,7 @@ function onButtonBrush(model: Model) {
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, model.pointerEventVoid); //Cancel curr tool
+  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 2; //2 is brush tool idx
   console.log("Brush tool selected");
 }
@@ -203,7 +207,7 @@ function onButtonFan(model: Model) {
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, model.pointerEventVoid); //Cancel curr tool
+  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 1; //1 is fan tool idx
   console.log("Fan tool selected");
 }
@@ -292,7 +296,22 @@ function onSliderBlue(model: Model) {
   }, ${model.color[2] * 255}, 1.0)`;
 }
 
+function onResize(model: Model) {
+  const dpr = window.devicePixelRatio || 1;
+  model.dpr = dpr * 1; //TODO: "factor" out
+
+  const [new_width, new_height] = resize_canvas(dpr * 1, model.canvas);
+  model.poly_uniform.update_dims(new_width, new_height);
+}
+
 /* helpers */
+
+export function resize_canvas(dpr: number, canvas: HTMLCanvasElement): Point {
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+
+  return [canvas.width, canvas.height];
+}
 
 function modal_close(model: Model) {
   if (!model.is_modal_open) return;
@@ -304,7 +323,6 @@ function modal_close(model: Model) {
 function modal_open(model: Model) {
   if (model.is_modal_open) return;
 
-  //TODO: add some state on the model about what modal is set atm?
   if (model.session_state === "in-session") {
     modalBodyToInSession(model);
   } else if (model.session_state === "end-session") {

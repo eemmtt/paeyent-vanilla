@@ -2,7 +2,8 @@ import { type RenderPass } from "../graphics/wgpu";
 import { menu_build } from "../ui/initializers";
 import { graphics_build, type RenderFunction } from "../graphics/Graphics";
 import type { PolyUniform } from "./PolyUniform";
-import type { UIEventType } from "../ui/events";
+import { PaeyentEventArray } from "./PaeyentEventArray";
+import { PointerEventDataArray } from "./PointerEventDataArray";
 
 // TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 export interface Model {
@@ -39,7 +40,8 @@ export interface Model {
   pts: Float32Array;
   num_pts: number;
   color: Float32Array;
-  pointerEventQueue: PointerEvent[];
+  eventQueue: PaeyentEventArray;
+  pointerDataQueue: PointerEventDataArray;
   pointerEventVoid: PointerEvent;
 
   /* menu state */
@@ -77,7 +79,6 @@ export interface Model {
   brush_button: HTMLButtonElement;
 
   is_modal_open: boolean;
-  UIEventQueue: UIEventType[];
 
   color_picker: HTMLDivElement;
   color_preview: HTMLDivElement;
@@ -118,7 +119,8 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     pts: new Float32Array(32),
     num_pts: 0,
     color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
-    pointerEventQueue: [],
+    eventQueue: new PaeyentEventArray(512),
+    pointerDataQueue: new PointerEventDataArray(512),
     pointerEventVoid: new PointerEvent("none"),
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);

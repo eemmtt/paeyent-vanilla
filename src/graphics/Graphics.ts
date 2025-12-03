@@ -1,5 +1,5 @@
 import { wgpu_init, type RenderPass } from "./wgpu";
-import { resize_canvas } from "../main";
+import { resize_canvas } from "../ui/events";
 import type { Model } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
 
