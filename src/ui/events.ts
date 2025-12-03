@@ -86,37 +86,6 @@ export const UIEventHandlers = [
 ];
 
 function onButtonStartSession(model: Model) {
-  // update SessionOptions from session menu state
-  const form = model.modal_settings_form;
-  const constraintTypeRadio = form.querySelector(
-    'input[name="constraint-type"]:checked'
-  ) as HTMLInputElement;
-  const colorPickerTypeRadio = form.querySelector(
-    'input[name="color-picker-type"]:checked'
-  ) as HTMLInputElement;
-  const scratchAreaRadio = form.querySelector(
-    'input[name="scratch-area"]:checked'
-  ) as HTMLInputElement;
-  const minutesInput = form.querySelector(
-    "#constraint-minutes"
-  ) as HTMLInputElement;
-  const secondsInput = form.querySelector(
-    "#constraint-seconds"
-  ) as HTMLInputElement;
-  const actionsInput = form.querySelector(
-    "#constraint-actions"
-  ) as HTMLInputElement;
-
-  model.constraint_type = constraintTypeRadio.value as
-    | "none"
-    | "time"
-    | "actions";
-  model.constraint_time_minutes = parseInt(minutesInput?.value) || 0;
-  model.constraint_time_seconds = parseInt(secondsInput?.value) || 0;
-  model.constraint_actions = parseInt(actionsInput?.value) || 10;
-  model.color_picker_type = colorPickerTypeRadio.value as "rgb" | "hsv";
-  model.scratch_area = scratchAreaRadio.value === "yes";
-
   // TODO: Actually start new session with these options
   model.session_state = "in-session";
 
@@ -146,6 +115,8 @@ function onButtonEndSession(model: Model) {
 
   //close modal
   modal_close(model);
+
+  //TODO: deactivate tool, prevent tool selection events
 
   //update modal body to endSession contents
   modalBodyToEndSession(model);
