@@ -1,7 +1,8 @@
-import { type RenderPass } from "../graphics-webgpu";
-import { menu_build } from "../ui/menu";
-import { graphics_build, type RenderFunction } from "./Graphics";
+import { type RenderPass } from "../graphics/wgpu";
+import { menu_build } from "../ui/initializers";
+import { graphics_build, type RenderFunction } from "../graphics/Graphics";
 import type { PolyUniform } from "./PolyUniform";
+import type { UIEventType } from "../ui/events";
 
 // TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 export interface Model {
@@ -39,6 +40,7 @@ export interface Model {
   num_pts: number;
   color: Float32Array;
   pointerEventQueue: PointerEvent[];
+  pointerEventVoid: PointerEvent;
 
   /* menu state */
   menu_container: Element;
@@ -47,14 +49,27 @@ export interface Model {
   modal_container: HTMLDivElement;
   modal_content: HTMLDivElement;
   modal_body: HTMLDivElement;
-  modal_about_section: HTMLElement;
-  modal_settings_section: HTMLElement;
-  modal_settings_form: HTMLFormElement;
+  modal_about_section: HTMLDetailsElement;
   modal_close_button: HTMLButtonElement;
   modal_save_button: HTMLButtonElement;
   modal_share_button: HTMLButtonElement;
   modal_end_session_button: HTMLButtonElement;
   modal_start_session_button: HTMLButtonElement;
+
+  modal_settings_section: HTMLElement;
+  modal_settings_form: HTMLFormElement;
+  radio_constraint_type_none: HTMLInputElement;
+  radio_constraint_type_time: HTMLInputElement;
+  constraint_type_time_inputgroup: HTMLDivElement;
+  constraint_type_time_minutes: HTMLInputElement;
+  constraint_type_time_seconds: HTMLInputElement;
+  radio_constraint_type_actions: HTMLInputElement;
+  constraint_type_actions_inputgroup: HTMLDivElement;
+  constraint_type_actions_count: HTMLInputElement;
+  radio_colorpicker_type_rgb: HTMLInputElement;
+  radio_colorpicker_type_hsv: HTMLInputElement;
+  radio_scratch_yes: HTMLInputElement;
+  radio_scratch_no: HTMLInputElement;
 
   menu_button: HTMLButtonElement;
   fan_button: HTMLButtonElement;
@@ -62,13 +77,13 @@ export interface Model {
   brush_button: HTMLButtonElement;
 
   is_modal_open: boolean;
-  UIEventQueue: UIEvent[];
+  UIEventQueue: UIEventType[];
 
   color_picker: HTMLDivElement;
+  color_preview: HTMLDivElement;
   slider_r: HTMLInputElement;
   slider_b: HTMLInputElement;
   slider_g: HTMLInputElement;
-  onSlider: (event: Event, model: Model, color_idx: number) => void;
 
   /* session state */
   session_state: SessionState;
@@ -81,11 +96,6 @@ export interface Model {
 }
 
 export type SessionState = "in-session" | "end-session";
-export type UIEventType = "start-session" | "end-session";
-export interface UIEvent {
-  type: UIEventType;
-}
-
 export interface SessionSettings {
   constraint_type: "none" | "time" | "actions";
   constraint_time_minutes?: number;
@@ -109,6 +119,7 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     num_pts: 0,
     color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
     pointerEventQueue: [],
+    pointerEventVoid: new PointerEvent("none"),
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);
   const graphics_model = await graphics_build();
@@ -120,20 +131,4 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     session_state: "in-session",
     ...settings,
   };
-}
-
-export function session_end(event: UIEvent, model: Model) {
-  //update model.session_state to "end-session"
-  //update menu-container to end session contents:
-  // 1. "->" menu button in the bottom right which opens the end-session modal
-  // 2. a session description line under the canvas (or scratch area, if present)
-  //    The description line contains the date, time, and the constraints used (e.g., time elapsed of the session (not currently implemented))
-  //home the canvas view, if applicable (not currently implemented)
-}
-
-export function session_start(event: UIEvent, model: Model) {
-  //update model.session_state to "in-session"
-  //update menu-container to in-session contents using the SessionOptions struct:
-  //  (same as when init_model() is called)
-  //clear the canvas with a RenderPass "clear-all"
 }

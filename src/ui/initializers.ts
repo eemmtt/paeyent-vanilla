@@ -1,3 +1,4 @@
+import type { Color } from "../graphics/Graphics";
 import type { SessionSettings, SessionState, Model } from "../types/Model";
 
 export function menu_build(
@@ -25,7 +26,7 @@ export function menu_build(
   button_container.innerHTML = "";
 
   /* color picker */
-  const [color_picker, slider_r, slider_b, slider_g, onSlider] =
+  const [color_picker, color_preview, slider_r, slider_g, slider_b] =
     color_picker_build(settings, init_color);
   color_picker_container.appendChild(color_picker);
 
@@ -36,9 +37,17 @@ export function menu_build(
   button_container.appendChild(menu_button);
 
   /* tool buttons */
-  const line_button = tool_button_build("polyline", "<u>L</u>ine", "l");
-  const fan_button = tool_button_build("polyfan", "<u>F</u>an", "f");
-  const brush_button = tool_button_build("brush", "<u>B</u>rush", "b");
+  const line_button = document.createElement("button");
+  line_button.innerHTML = "<u>L</u>ine";
+  line_button.dataset.polyline = "true";
+
+  const fan_button = document.createElement("button");
+  fan_button.innerHTML = "<u>F</u>an";
+  fan_button.dataset.polyfan = "true";
+
+  const brush_button = document.createElement("button");
+  brush_button.innerHTML = "<u>B</u>rush";
+  brush_button.dataset.brush = "true";
 
   button_container.appendChild(brush_button);
   button_container.appendChild(fan_button);
@@ -68,6 +77,7 @@ export function menu_build(
   const modal_close_button = document.createElement("button");
   modal_close_button.className = "modal-close";
   modal_close_button.textContent = "close";
+  modal_close_button.dataset.close = "true";
 
   modal_header.appendChild(modal_title);
   modal_header.appendChild(modal_close_button);
@@ -83,22 +93,37 @@ export function menu_build(
   const modal_end_session_button = document.createElement("button");
   modal_end_session_button.className = "end-session-button";
   modal_end_session_button.textContent = "End Current Session";
+  modal_end_session_button.dataset.endsession = "true";
 
-  const [
+  const {
     modal_settings_section,
     modal_start_session_button,
     modal_settings_form,
-  ] = settings_build(settings);
+    radio_constraint_type_none,
+    radio_constraint_type_time,
+    radio_constraint_type_actions,
+    radio_colorpicker_type_rgb,
+    radio_colorpicker_type_hsv,
+    radio_scratch_yes,
+    radio_scratch_no,
+    constraint_type_time_inputgroup,
+    constraint_type_time_minutes,
+    constraint_type_time_seconds,
+    constraint_type_actions_inputgroup,
+    constraint_type_actions_count,
+  } = settings_build(settings);
 
   const modal_about_section = about_build();
 
   const modal_save_button = document.createElement("button");
   modal_save_button.className = "save-file-button";
   modal_save_button.textContent = "Save to File";
+  modal_save_button.dataset.save = "true";
 
   const modal_share_button = document.createElement("button");
   modal_share_button.className = "share-button";
   modal_share_button.textContent = "Share";
+  modal_share_button.dataset.share = "true";
 
   // modal init to in-session
   modal_body.appendChild(modal_end_session_button);
@@ -117,13 +142,25 @@ export function menu_build(
     modal_content,
     modal_body,
     modal_about_section,
-    modal_settings_section,
-    modal_settings_form,
     modal_close_button,
     modal_save_button,
     modal_share_button,
     modal_end_session_button,
     modal_start_session_button,
+    modal_settings_section,
+    modal_settings_form,
+    radio_constraint_type_none,
+    radio_constraint_type_time,
+    radio_constraint_type_actions,
+    radio_colorpicker_type_rgb,
+    radio_colorpicker_type_hsv,
+    radio_scratch_yes,
+    radio_scratch_no,
+    constraint_type_time_inputgroup,
+    constraint_type_time_minutes,
+    constraint_type_time_seconds,
+    constraint_type_actions_inputgroup,
+    constraint_type_actions_count,
     menu_button,
     fan_button,
     line_button,
@@ -131,16 +168,14 @@ export function menu_build(
     is_modal_open: false,
     UIEventQueue: [],
     color_picker,
+    color_preview,
     slider_r,
     slider_g,
     slider_b,
-    onSlider,
   };
 }
 
-function settings_build(
-  session_settings: SessionSettings
-): [HTMLElement, HTMLButtonElement, HTMLFormElement] {
+function settings_build(session_settings: SessionSettings) {
   const section = document.createElement("div");
   section.className = "session-settings-section";
 
@@ -162,27 +197,56 @@ function settings_build(
   const constraint_radio_container = document.createElement("div");
   constraint_radio_container.className = "radio-group";
 
-  const constraint_radio_none_label = radio_button_build(
-    "none",
-    "None",
-    "constraint-type",
-    session_settings.constraint_type === "none"
-  );
+  // none constraint
+  const constraint_radio_none_label = document.createElement("label");
+  constraint_radio_none_label.className = "radio-label";
 
-  const constraint_radio_time_label = radio_button_build(
-    "time",
-    "Time",
-    "constraint-type",
-    session_settings.constraint_type === "time"
-  );
+  const constraint_none_input = document.createElement("input");
+  constraint_none_input.type = "radio";
+  constraint_none_input.name = "constraint-type";
+  constraint_none_input.value = "none";
+  constraint_none_input.checked = session_settings.constraint_type === "none";
+  constraint_none_input.dataset.none = "true";
 
-  const constraint_radio_actions_label = radio_button_build(
-    "actions",
-    "Actions",
-    "constraint-type",
-    session_settings.constraint_type === "actions"
-  );
+  const constraint_none_text = document.createTextNode("None");
 
+  constraint_radio_none_label.appendChild(constraint_none_input);
+  constraint_radio_none_label.appendChild(constraint_none_text);
+
+  // time constraint
+  const constraint_radio_time_label = document.createElement("label");
+  constraint_radio_time_label.className = "radio-label";
+
+  const constraint_time_input = document.createElement("input");
+  constraint_time_input.type = "radio";
+  constraint_time_input.name = "constraint-type";
+  constraint_time_input.value = "time";
+  constraint_time_input.checked = session_settings.constraint_type === "time";
+  constraint_time_input.dataset.time = "true";
+
+  const constraint_time_text = document.createTextNode("Time");
+
+  constraint_radio_time_label.appendChild(constraint_time_input);
+  constraint_radio_time_label.appendChild(constraint_time_text);
+
+  // actions constraint
+  const constraint_radio_actions_label = document.createElement("label");
+  constraint_radio_actions_label.className = "radio-label";
+
+  const constraint_actions_input = document.createElement("input");
+  constraint_actions_input.type = "radio";
+  constraint_actions_input.name = "constraint-type";
+  constraint_actions_input.value = "actions";
+  constraint_actions_input.checked =
+    session_settings.constraint_type === "actions";
+  constraint_actions_input.dataset.actions = "true";
+
+  const constraint_actions_text = document.createTextNode("Actions");
+
+  constraint_radio_actions_label.appendChild(constraint_actions_input);
+  constraint_radio_actions_label.appendChild(constraint_actions_text);
+
+  // assemble constraint group
   constraint_radio_container.appendChild(constraint_radio_none_label);
   constraint_radio_container.appendChild(constraint_radio_time_label);
   constraint_radio_container.appendChild(constraint_radio_actions_label);
@@ -202,6 +266,7 @@ function settings_build(
   minutesInput.id = "constraint-minutes";
   minutesInput.min = "0";
   minutesInput.value = String(session_settings.constraint_time_minutes ?? 0);
+  minutesInput.dataset.minutes = "true";
 
   const secondsLabel = document.createElement("label");
   secondsLabel.textContent = "Seconds:";
@@ -211,6 +276,7 @@ function settings_build(
   secondsInput.min = "0";
   secondsInput.max = "59";
   secondsInput.value = String(session_settings.constraint_time_seconds ?? 0);
+  secondsInput.dataset.seconds = "true";
 
   timeInputsGroup.appendChild(minutesLabel);
   timeInputsGroup.appendChild(minutesInput);
@@ -231,6 +297,7 @@ function settings_build(
   actionsInput.id = "constraint-actions";
   actionsInput.min = "1";
   actionsInput.value = String(session_settings.constraint_actions ?? 10);
+  actionsInput.dataset.actionscount = "true";
 
   actionsInputsGroup.appendChild(actionsLabel);
   actionsInputsGroup.appendChild(actionsInput);
@@ -250,20 +317,39 @@ function settings_build(
   const color_picker_radio_container = document.createElement("div");
   color_picker_radio_container.className = "radio-group";
 
-  const color_picker_radio_rgb_label = radio_button_build(
-    "rgb",
-    "RGB",
-    "color-picker-type",
-    session_settings.color_picker_type === "rgb"
-  );
+  // rgb color picker
+  const color_picker_radio_rgb_label = document.createElement("label");
+  color_picker_radio_rgb_label.className = "radio-label";
 
-  const color_picker_radio_hsv_label = radio_button_build(
-    "hsv",
-    "HSV",
-    "color-picker-type",
-    session_settings.color_picker_type === "hsv"
-  );
+  const color_picker_rgb_input = document.createElement("input");
+  color_picker_rgb_input.type = "radio";
+  color_picker_rgb_input.name = "color-picker-type";
+  color_picker_rgb_input.value = "rgb";
+  color_picker_rgb_input.checked = session_settings.color_picker_type === "rgb";
+  color_picker_rgb_input.dataset.rgb = "true";
 
+  const color_picker_rgb_text = document.createTextNode("RGB");
+
+  color_picker_radio_rgb_label.appendChild(color_picker_rgb_input);
+  color_picker_radio_rgb_label.appendChild(color_picker_rgb_text);
+
+  // hsv color picker
+  const color_picker_radio_hsv_label = document.createElement("label");
+  color_picker_radio_hsv_label.className = "radio-label";
+
+  const color_picker_hsv_input = document.createElement("input");
+  color_picker_hsv_input.type = "radio";
+  color_picker_hsv_input.name = "color-picker-type";
+  color_picker_hsv_input.value = "hsv";
+  color_picker_hsv_input.checked = session_settings.color_picker_type === "hsv";
+  color_picker_hsv_input.dataset.hsv = "true";
+
+  const color_picker_hsv_text = document.createTextNode("HSV");
+
+  color_picker_radio_hsv_label.appendChild(color_picker_hsv_input);
+  color_picker_radio_hsv_label.appendChild(color_picker_hsv_text);
+
+  // assemble color picker group
   color_picker_radio_container.appendChild(color_picker_radio_rgb_label);
   color_picker_radio_container.appendChild(color_picker_radio_hsv_label);
   color_picker_group.appendChild(color_picker_radio_container);
@@ -281,20 +367,39 @@ function settings_build(
   const scratch_area_radio_container = document.createElement("div");
   scratch_area_radio_container.className = "radio-group";
 
-  const scratch_area_radio_yes_label = radio_button_build(
-    "yes",
-    "Yes",
-    "scratch-area",
-    session_settings.scratch_area === true
-  );
+  // yes scratch area
+  const scratch_area_radio_yes_label = document.createElement("label");
+  scratch_area_radio_yes_label.className = "radio-label";
 
-  const scratch_area_radio_no_label = radio_button_build(
-    "no",
-    "No",
-    "scratch-area",
-    session_settings.scratch_area === false
-  );
+  const scratch_area_yes_input = document.createElement("input");
+  scratch_area_yes_input.type = "radio";
+  scratch_area_yes_input.name = "scratch-area";
+  scratch_area_yes_input.value = "yes";
+  scratch_area_yes_input.checked = session_settings.scratch_area === true;
+  scratch_area_yes_input.dataset.yes = "true";
 
+  const scratch_area_yes_text = document.createTextNode("Yes");
+
+  scratch_area_radio_yes_label.appendChild(scratch_area_yes_input);
+  scratch_area_radio_yes_label.appendChild(scratch_area_yes_text);
+
+  // no scratch area
+  const scratch_area_radio_no_label = document.createElement("label");
+  scratch_area_radio_no_label.className = "radio-label";
+
+  const scratch_area_no_input = document.createElement("input");
+  scratch_area_no_input.type = "radio";
+  scratch_area_no_input.name = "scratch-area";
+  scratch_area_no_input.value = "no";
+  scratch_area_no_input.checked = session_settings.scratch_area === false;
+  scratch_area_no_input.dataset.no = "true";
+
+  const scratch_area_no_text = document.createTextNode("No");
+
+  scratch_area_radio_no_label.appendChild(scratch_area_no_input);
+  scratch_area_radio_no_label.appendChild(scratch_area_no_text);
+
+  // assemble scratch area group
   scratch_area_radio_container.appendChild(scratch_area_radio_yes_label);
   scratch_area_radio_container.appendChild(scratch_area_radio_no_label);
   scratch_area_group.appendChild(scratch_area_radio_container);
@@ -308,13 +413,30 @@ function settings_build(
   modal_start_session_button.type = "button";
   modal_start_session_button.className = "start-session-button";
   modal_start_session_button.textContent = "Start New Session";
+  modal_start_session_button.dataset.startsession = "true";
 
   section.appendChild(modal_start_session_button);
 
-  return [section, modal_start_session_button, form];
+  return {
+    modal_settings_section: section,
+    modal_start_session_button,
+    modal_settings_form: form,
+    radio_constraint_type_none: constraint_none_input,
+    radio_constraint_type_time: constraint_time_input,
+    radio_constraint_type_actions: constraint_actions_input,
+    radio_colorpicker_type_rgb: color_picker_rgb_input,
+    radio_colorpicker_type_hsv: color_picker_hsv_input,
+    radio_scratch_yes: scratch_area_yes_input,
+    radio_scratch_no: scratch_area_no_input,
+    constraint_type_time_inputgroup: timeInputsGroup,
+    constraint_type_time_minutes: minutesInput,
+    constraint_type_time_seconds: secondsInput,
+    constraint_type_actions_inputgroup: actionsInputsGroup,
+    constraint_type_actions_count: actionsInput,
+  };
 }
 
-function about_build(): HTMLElement {
+function about_build(): HTMLDetailsElement {
   const details = document.createElement("details");
   details.className = "about-section";
 
@@ -330,109 +452,9 @@ function about_build(): HTMLElement {
     <p>Built with WebGPU for high-performance graphics rendering.</p>
   `;
   details.appendChild(content);
-
+  details.open = false;
+  details.dataset.about = "true";
   return details;
-}
-
-export function modal_open(
-  model: Model,
-  modalType: "in-session" | "end-session" = "in-session"
-) {
-  if (model.is_modal_open) return;
-
-  // Hide all modal contents
-  const allModals = model.modal_container.querySelectorAll(".modal-content");
-  allModals.forEach((modal) => {
-    (modal as HTMLElement).style.display = "none";
-  });
-
-  // Show the requested modal
-  const targetModal = model.modal_container.querySelector(
-    `[data-modal-type="${modalType}"]`
-  ) as HTMLElement;
-
-  if (targetModal) {
-    targetModal.style.display = "block";
-  }
-
-  // Show backdrop
-  model.modal_container.style.display = "flex";
-  model.is_modal_open = true;
-}
-
-export function modal_close(model: Model) {
-  if (!model.is_modal_open) return;
-
-  model.modal_container.style.display = "none";
-  model.is_modal_open = false;
-}
-
-export function ui_to_inSession(model: Model) {
-  //TODO: implement UIEvents for all these...
-
-  //TODO: update to model.menu_container.replaceChildren()
-  //      once color-picker and scratch-area are implemented
-  model.button_container.replaceChildren(
-    model.menu_button,
-    model.brush_button,
-    model.fan_button,
-    model.line_button
-  );
-
-  //close modal
-  modal_close(model);
-
-  //update modal body to inSession contents
-  model.modal_body.replaceChildren(
-    model.modal_end_session_button,
-    model.modal_about_section
-  );
-}
-
-export function ui_to_endSession(model: Model) {
-  //TODO: update to model.menu_container.replaceChildren()
-  //      once color-picker and scratch-area are implemented
-  model.button_container.replaceChildren(model.menu_button);
-
-  //close modal
-  modal_close(model);
-
-  //update modal body to endSession contents
-  model.modal_body.replaceChildren(
-    model.modal_settings_section,
-    model.modal_save_button,
-    model.modal_share_button,
-    model.modal_about_section
-  );
-}
-
-export function tool_button_build(name: string, label: string, hotkey: string) {
-  const button = document.createElement("button");
-  button.innerHTML = label;
-  button.dataset.tool = name;
-  return button;
-}
-
-function radio_button_build(
-  value: string,
-  label: string,
-  group_name: string,
-  is_checked: boolean
-): HTMLLabelElement {
-  const radioWrapper = document.createElement("label");
-  radioWrapper.className = "radio-label";
-
-  const radio = document.createElement("input");
-  radio.type = "radio";
-  radio.name = group_name;
-  radio.value = value;
-  radio.checked = is_checked;
-
-  const labelText = document.createTextNode(label);
-
-  radioWrapper.appendChild(radio);
-  radioWrapper.appendChild(labelText);
-  return radioWrapper;
 }
 
 function color_picker_build(
@@ -440,17 +462,17 @@ function color_picker_build(
   init_color: Float32Array
 ): [
   HTMLDivElement,
+  HTMLDivElement,
   HTMLInputElement,
   HTMLInputElement,
-  HTMLInputElement,
-  (event: Event, model: Model, color_idx: number) => void
+  HTMLInputElement
 ] {
   const color_picker = document.createElement("div");
   if (settings.color_picker_type == "rgb") {
     color_picker.className = "rgb";
     color_picker.style.display = "grid";
     color_picker.style.width = "100%";
-    color_picker.style.grid = "auto-flow repeat(3, 1fr) / 1fr";
+    color_picker.style.grid = "auto-flowrepeat(4, 1fr) / 1fr";
 
     const slider_r = document.createElement("input");
     slider_r.type = "range";
@@ -473,19 +495,20 @@ function color_picker_build(
     slider_b.step = "any";
     slider_b.valueAsNumber = init_color[2];
 
+    const color_preview = document.createElement("div");
+    color_preview.style.width = "100%";
+    color_preview.style.minHeight = "0.5rem";
+    color_preview.style.maxHeight = "1rem";
+    color_preview.style.background = `rgba(${init_color[0] * 255}, ${
+      init_color[1] * 255
+    }, ${init_color[2] * 255}, 1.0)`;
+
+    color_picker.appendChild(color_preview);
     color_picker.appendChild(slider_r);
     color_picker.appendChild(slider_g);
     color_picker.appendChild(slider_b);
 
-    const onSlider = (event: Event, model: Model, color_idx: number) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement)) {
-        throw Error("onSliderR: target is not an input element");
-      }
-      model.color[color_idx] = target.valueAsNumber;
-    };
-
-    return [color_picker, slider_r, slider_g, slider_b, onSlider];
+    return [color_picker, color_preview, slider_r, slider_g, slider_b];
   } else if (settings.color_picker_type == "hsv") {
     throw Error("color_picker_build: HSV picker not implemented");
   } else {
@@ -494,3 +517,33 @@ function color_picker_build(
     );
   }
 }
+
+/*
+function build_slider(
+  direction: "vertical" | "horizontal",
+  min: number,
+  max: number,
+  init_value: number,
+  track_color: Color,
+  progress_color: Color,
+  label?: string
+): HTMLDivElement {
+  const slider_container = document.createElement("div");
+  slider_container.className = "slider-container";
+  if (direction === "horizontal") {
+    slider_container.style.width = "100%";
+  }
+
+  const slider_track = document.createElement("div");
+  slider_track.className = "slider-track";
+
+  const slider_progress = document.createElement("div");
+  slider_progress.className = "slider-progress";
+
+  // container <- track <- progress
+  slider_track.appendChild(slider_progress);
+  slider_container.appendChild(slider_track);
+
+  return slider_container;
+}
+  */

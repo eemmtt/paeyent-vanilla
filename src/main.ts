@@ -1,20 +1,8 @@
 import "./style.css";
 import { type Point } from "./types/Point";
 import { ToolHandlers, ToolLookup, ToolStride } from "./types/Tool";
-import {
-  type Model,
-  model_init,
-  type SessionSettings,
-  session_end,
-  session_start,
-  type SessionState,
-} from "./types/Model";
-import {
-  modal_open,
-  modal_close,
-  ui_to_inSession,
-  ui_to_endSession,
-} from "./ui/menu";
+import { type Model, model_init, type SessionSettings } from "./types/Model";
+import { UIEventHandlers, UIEventLookup } from "./ui/events";
 
 function mainloop(model: Model) {
   /* process pointer events */
@@ -30,12 +18,8 @@ function mainloop(model: Model) {
   model.pointerEventQueue = []; //TODO: make fixed size ring buffer
 
   /* process ui events */
-  for (const event of model.UIEventQueue) {
-    if (event.type == "end-session") {
-      session_end(event, model);
-    } else if (event.type == "start-session") {
-      session_start(event, model);
-    }
+  for (const eventType of model.UIEventQueue) {
+    UIEventHandlers[UIEventLookup[eventType]](model);
   }
   model.UIEventQueue = []; //TODO: make fixed size ring buffer
 
@@ -46,7 +30,7 @@ function mainloop(model: Model) {
   requestAnimationFrame(() => mainloop(model));
 }
 
-/* EVENT HANDLERS */
+/* window & input handlers */
 function onpointerdown(event: Event, model: Model) {
   model.pointerEventQueue.push(event as PointerEvent);
 }
@@ -90,143 +74,15 @@ function onkeydown(event: KeyboardEvent, model: Model) {
     //console.log("key pressed: ", event.key);
 
     if (event.key == "m") {
-      if (!model.is_modal_open) {
-        modal_open(model);
-      } else {
-        modal_close(model);
-      }
-      return;
-    }
-
-    if (event.key == "f") {
-      if (model.curr_tool == ToolLookup["polyfan"]) {
-        return;
-      } else {
-        /* Tool Cleanup */
-        ToolHandlers[model.curr_tool * ToolStride + 3](
-          model,
-          new PointerEvent("dummy")
-        );
-        model.curr_tool = ToolLookup["polyfan"];
-        console.log("polyfan tool selected");
-        return;
-      }
-    }
-
-    if (event.key == "l") {
-      if (model.curr_tool == ToolLookup["polyline"]) {
-        return;
-      } else {
-        /* Tool Cleanup */
-        ToolHandlers[model.curr_tool * ToolStride + 3](
-          model,
-          new PointerEvent("dummy")
-        );
-        model.curr_tool = ToolLookup["polyline"];
-        console.log("polyline tool selected");
-        return;
-      }
+      model.UIEventQueue.push("button-menu");
+    } else if (event.key == "f") {
+      model.UIEventQueue.push("button-fan");
+    } else if (event.key == "l") {
+      model.UIEventQueue.push("button-line");
+    } else if (event.key == "b") {
+      model.UIEventQueue.push("button-brush");
     }
   }
-}
-
-/* MENU EVENT HANDLERS */
-function ontoolbutton(event: PointerEvent, model: Model) {
-  const target = event.target as HTMLElement;
-  if (!target.dataset.tool) return;
-
-  // bail if tool already selected
-  const tool_name = target.dataset.tool as keyof typeof ToolLookup;
-  const new_tool = ToolLookup[tool_name];
-  if (model.curr_tool === new_tool) {
-    return;
-  }
-
-  // tool cleanup + switch
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, event);
-  model.curr_tool = new_tool;
-  console.log(tool_name, "tool selected");
-}
-
-function onmenubutton(event: PointerEvent, model: Model) {
-  const target = event.target as HTMLElement;
-  if (!target.dataset.menu) return;
-
-  modal_open(model, "in-session");
-}
-
-function onconstrainttypechange(event: Event, model: Model) {
-  const target = event.target as HTMLInputElement;
-  if (target.type !== "radio") return;
-
-  const form = target.closest("form");
-  if (!form) return;
-
-  const timeInputsGroup = form.querySelector(
-    "#time-inputs"
-  ) as HTMLElement | null;
-  const actionsInputsGroup = form.querySelector(
-    "#actions-inputs"
-  ) as HTMLElement | null;
-
-  if (timeInputsGroup) {
-    timeInputsGroup.style.display = target.value === "time" ? "flex" : "none";
-  }
-  if (actionsInputsGroup) {
-    actionsInputsGroup.style.display =
-      target.value === "actions" ? "flex" : "none";
-  }
-}
-
-function onstartsessionbutton(model: Model) {
-  // update SessionOptions from session menu state
-  const form = model.modal_settings_form;
-  const constraintTypeRadio = form.querySelector(
-    'input[name="constraint-type"]:checked'
-  ) as HTMLInputElement;
-  const colorPickerTypeRadio = form.querySelector(
-    'input[name="color-picker-type"]:checked'
-  ) as HTMLInputElement;
-  const scratchAreaRadio = form.querySelector(
-    'input[name="scratch-area"]:checked'
-  ) as HTMLInputElement;
-  const minutesInput = form.querySelector(
-    "#constraint-minutes"
-  ) as HTMLInputElement;
-  const secondsInput = form.querySelector(
-    "#constraint-seconds"
-  ) as HTMLInputElement;
-  const actionsInput = form.querySelector(
-    "#constraint-actions"
-  ) as HTMLInputElement;
-
-  model.constraint_type = constraintTypeRadio.value as
-    | "none"
-    | "time"
-    | "actions";
-  model.constraint_time_minutes = parseInt(minutesInput?.value) || 0;
-  model.constraint_time_seconds = parseInt(secondsInput?.value) || 0;
-  model.constraint_actions = parseInt(actionsInput?.value) || 10;
-  model.color_picker_type = colorPickerTypeRadio.value as "rgb" | "hsv";
-  model.scratch_area = scratchAreaRadio.value === "yes";
-
-  // TODO: Actually start new session with these options
-  model.session_state = "in-session";
-  ui_to_inSession(model); //TODO: onstartsession and ui_to_inSession can be combined...
-  model.renderQueue.push({ type: "clear-all" });
-}
-
-function onendsessionbutton(event: Event, model: Model) {
-  model.session_state = "end-session" as SessionState;
-  ui_to_endSession(model);
-}
-
-function onsavefilebutton(event: Event, model: Model) {
-  alert("TODO: Implement save to file");
-}
-
-function onsharebutton(event: Event, model: Model) {
-  alert("TODO: Implement share");
 }
 
 //TODO: prevent page refresh
@@ -251,56 +107,135 @@ async function main() {
   model.canvas.addEventListener("pointermove", (e) => onpointermove(e, model));
   model.canvas.addEventListener("pointerup", (e) => onpointerup(e, model));
 
+  model.slider_r.addEventListener("input", (e) => {
+    if (e.target === model.slider_r) {
+      model.UIEventQueue.push("input-slider-red");
+    }
+  });
+  model.slider_g.addEventListener("input", (e) => {
+    if (e.target === model.slider_g) {
+      model.UIEventQueue.push("input-slider-green");
+    }
+  });
+  model.slider_b.addEventListener("input", (e) => {
+    if (e.target === model.slider_b) {
+      model.UIEventQueue.push("input-slider-blue");
+    }
+  });
+
   /* button-container events */
-  model.menu_button.addEventListener("pointerdown", (e) =>
-    onmenubutton(e, model)
-  );
-  model.brush_button.addEventListener(
-    "pointerdown",
-    (e) => {}
-    //ontoolbutton(e, model)
-  );
-  model.fan_button.addEventListener("pointerdown", (e) =>
-    ontoolbutton(e, model)
-  );
-  model.line_button.addEventListener("pointerdown", (e) =>
-    ontoolbutton(e, model)
-  );
+  model.menu_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.menu_button) {
+      model.UIEventQueue.push("button-menu");
+    }
+  });
+  model.brush_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.brush_button) {
+      model.UIEventQueue.push("button-brush");
+    }
+  });
+  model.fan_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.fan_button) {
+      model.UIEventQueue.push("button-fan");
+    }
+  });
+  model.line_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.line_button) {
+      model.UIEventQueue.push("button-line");
+    }
+  });
 
   /* modal events */
   model.modal_container.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_container) {
-      modal_close(model);
+      model.UIEventQueue.push("button-modal-container");
     }
   });
-  model.modal_close_button.addEventListener("pointerdown", () =>
-    modal_close(model)
-  );
-
-  // Constraint type radio change handlers for both modal bodies
-  const constraintRadioContainers = model.modal_container.querySelectorAll(
-    '.radio-group input[name="constraint-type"]'
-  );
-  constraintRadioContainers.forEach((radio) => {
-    radio.addEventListener("change", (e) => onconstrainttypechange(e, model));
+  model.modal_close_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_close_button) {
+      model.UIEventQueue.push("button-modal-close");
+    }
   });
 
-  model.modal_start_session_button.addEventListener("pointerdown", () =>
-    onstartsessionbutton(model)
-  );
-  model.modal_end_session_button.addEventListener("pointerdown", (e) =>
-    onendsessionbutton(e, model)
-  );
-  model.modal_save_button.addEventListener("pointerdown", (e) =>
-    onsavefilebutton(e, model)
-  );
-  model.modal_share_button.addEventListener("pointerdown", (e) =>
-    onsharebutton(e, model)
-  );
+  model.radio_constraint_type_none.addEventListener("change", (e) => {
+    if (e.target === model.radio_constraint_type_none) {
+      model.UIEventQueue.push("radio-constraint-type-none");
+    }
+  });
+  model.radio_constraint_type_time.addEventListener("change", (e) => {
+    if (e.target === model.radio_constraint_type_time) {
+      model.UIEventQueue.push("radio-constraint-type-time");
+    }
+  });
+  model.constraint_type_time_minutes.addEventListener("change", (e) => {
+    if (e.target === model.constraint_type_time_minutes) {
+      model.UIEventQueue.push("input-constraint-time-minutes");
+    }
+  });
+  model.constraint_type_time_seconds.addEventListener("change", (e) => {
+    if (e.target === model.constraint_type_time_seconds) {
+      model.UIEventQueue.push("input-constraint-time-seconds");
+    }
+  });
 
-  model.slider_r.addEventListener("input", (e) => model.onSlider(e, model, 0));
-  model.slider_g.addEventListener("input", (e) => model.onSlider(e, model, 1));
-  model.slider_b.addEventListener("input", (e) => model.onSlider(e, model, 2));
+  model.radio_constraint_type_actions.addEventListener("change", (e) => {
+    if (e.target === model.radio_constraint_type_actions) {
+      model.UIEventQueue.push("radio-constraint-type-actions");
+    }
+  });
+  model.constraint_type_actions_count.addEventListener("change", (e) => {
+    if (e.target === model.constraint_type_actions_count) {
+      model.UIEventQueue.push("input-constraint-actions-count");
+    }
+  });
+
+  model.radio_colorpicker_type_rgb.addEventListener("change", (e) => {
+    if (e.target === model.radio_colorpicker_type_rgb) {
+      model.UIEventQueue.push("radio-colorpicker-type-rgb");
+    }
+  });
+  model.radio_colorpicker_type_hsv.addEventListener("change", (e) => {
+    if (e.target === model.radio_colorpicker_type_hsv) {
+      model.UIEventQueue.push("radio-colorpicker-type-hsv");
+    }
+  });
+
+  model.radio_scratch_yes.addEventListener("change", (e) => {
+    if (e.target === model.radio_scratch_yes) {
+      model.UIEventQueue.push("radio-scratch-yes");
+    }
+  });
+  model.radio_scratch_no.addEventListener("change", (e) => {
+    if (e.target === model.radio_scratch_no) {
+      model.UIEventQueue.push("radio-scratch-no");
+    }
+  });
+
+  model.modal_start_session_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_start_session_button) {
+      model.UIEventQueue.push("button-start-session");
+    }
+  });
+  model.modal_end_session_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_end_session_button) {
+      model.UIEventQueue.push("button-end-session");
+    }
+  });
+  model.modal_save_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_save_button) {
+      model.UIEventQueue.push("button-save");
+    }
+  });
+  model.modal_share_button.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_share_button) {
+      model.UIEventQueue.push("button-share");
+    }
+  });
+  model.modal_about_section.addEventListener("pointerdown", (e) => {
+    if (e.target === model.modal_about_section) {
+      model.UIEventQueue.push("button-about");
+    }
+  });
 
   /* start update + render loop */
   mainloop(model);
