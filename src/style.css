@@ -37,12 +37,20 @@ canvas {
   border: 2px solid purple;
 }
 
+.scratch-container {
+  width: 100%;
+  flex: 1;
+
+  /* TODO: remove */
+  border: 1px solid rgb(100, 69, 209);
+}
+
 .color-picker-container {
   width: 100%;
   flex: 1;
 
   /* TODO: remove */
-  border: 2px solid green;
+  border: 1px solid green;
 }
 
 .button-container {
