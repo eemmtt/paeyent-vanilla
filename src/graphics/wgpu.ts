@@ -1,11 +1,11 @@
-import compositeShaderCode from "./shaders/composite.wgsl?raw";
-import lineShaderCode from "./shaders/polyline.wgsl?raw";
-import fanShaderCode from "./shaders/polyfan.wgsl?raw";
+import compositeShaderCode from "../shaders/composite.wgsl?raw";
+import lineShaderCode from "../shaders/polyline.wgsl?raw";
+import fanShaderCode from "../shaders/polyfan.wgsl?raw";
 
-import { type Model } from "./types/Model";
-import type { Point } from "./types/Point";
-import { PolyUniform } from "./types/PolyUniform";
-import type { GraphicsModel } from "./types/Graphics";
+import { type Model } from "../types/Model";
+import type { Point } from "../types/Point";
+import { PolyUniform } from "../types/PolyUniform";
+import type { GraphicsModel } from "./Graphics";
 
 type FillStyle = "transparent" | "white";
 
@@ -97,6 +97,10 @@ export async function wgpu_init(
 
 //TODO: instead of passing objects around and if/else'ing
 //      in render(), implement as function table
+//TODO: refactor as normal drawing api e.g.,
+//      clear(target_layer: LayerType, clear_color: Color)
+//      line(target_layer: LayerType, a_x: number, a_y: number, b_x: number, b_y: number, color?, line_thickness?)
+//      triangle(target_layer: LayerType, a_x: number, a_y: number, b_x: number, b_y: number, c_x: number, c_y: number, color?)
 export type RenderPass =
   | {
       type: "polyline-clear-fg-and-draw-bg";

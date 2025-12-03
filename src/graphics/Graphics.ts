@@ -1,7 +1,7 @@
-import { wgpu_init, type RenderPass } from "../graphics-webgpu";
+import { wgpu_init, type RenderPass } from "./wgpu";
 import { resize_canvas } from "../main";
-import type { Model } from "./Model";
-import type { PolyUniform } from "./PolyUniform";
+import type { Model } from "../types/Model";
+import type { PolyUniform } from "../types/PolyUniform";
 
 export interface GraphicsModel {
   /* rendering state */
@@ -31,6 +31,7 @@ export interface GraphicsModel {
   render: RenderFunction;
 }
 
+export type Color = [number, number, number, number];
 export type RenderFunction = (model: Model) => void;
 
 export type GraphicsCtxInitializer = (
