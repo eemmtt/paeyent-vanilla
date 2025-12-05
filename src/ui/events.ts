@@ -103,7 +103,10 @@ function onButtonStartSession(model: Model) {
 
   //update modal body to inSession contents
   modalBodyToInSession(model);
-  model.renderQueue.push({ type: "clear-all" });
+  model.renderPassBuffer.push(
+    3, // RenderPassLookup["clear-all"] === 0
+    -1 // no data
+  );
 }
 
 function onButtonEndSession(model: Model) {
@@ -267,6 +270,7 @@ function onSliderBlue(model: Model) {
   }, ${model.color[2] * 255}, 1.0)`;
 }
 
+//TODO: investigate resize event scaling ui weird?
 function onResize(model: Model) {
   const dpr = window.devicePixelRatio || 1;
   model.dpr = dpr * 1; //TODO: "factor" out

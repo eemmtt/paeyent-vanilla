@@ -1,7 +1,9 @@
-import { wgpu_init, type RenderPass } from "./wgpu";
+import { wgpu_init } from "./wgpu";
 import { resize_canvas } from "../ui/events";
 import type { Model } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
+import type { RenderPassBuffer } from "../types/RenderPassBuffer";
+import type { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 
 export interface GraphicsModel {
   /* rendering state */
@@ -18,6 +20,7 @@ export interface GraphicsModel {
   bg_texture_view: GPUTextureView;
   fg_texture_view: GPUTextureView;
   an_texture_view: GPUTextureView;
+  clear_color: Color;
 
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;
@@ -27,7 +30,9 @@ export interface GraphicsModel {
   line_pipeline: GPURenderPipeline;
   fan_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
-  renderQueue: RenderPass[];
+
+  renderPassBuffer: RenderPassBuffer;
+  renderPassDataBuffer: RenderPassDataBuffer;
   render: RenderFunction;
 }
 

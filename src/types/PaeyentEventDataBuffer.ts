@@ -1,6 +1,7 @@
 import type { PointerType } from "./PaeyentEvent";
 
-export class PointerEventDataArray {
+// only pointer data (for now??)
+export class PaeyentEventDataBuffer {
   x: Float32Array;
   y: Float32Array;
   pressure: Float32Array;
@@ -9,7 +10,11 @@ export class PointerEventDataArray {
   top: number;
   capacity: number;
 
-  constructor(capacity: number = 128) {
+  constructor(capacity: number = 127) {
+    if (capacity > 127) {
+      console.warn("PaeyentEventDataBuffer max capacity is 127");
+      capacity = 127;
+    }
     this.x = new Float32Array(capacity);
     this.y = new Float32Array(capacity);
     this.pressure = new Float32Array(capacity);
@@ -26,7 +31,7 @@ export class PointerEventDataArray {
     pointerType: PointerType
   ): number {
     if (this.top === this.capacity - 1) {
-      console.warn("PointerEventDataArray.push(): full, dropping event");
+      console.warn("PaeyentEventDataBuffer.push(): full, dropping event");
       return -1;
     }
 
@@ -49,7 +54,7 @@ export class PointerEventDataArray {
   ): number {
     if (this.top === 0) {
       console.warn(
-        "PointerEventDataArray.replaceLast(): empty, dropping event"
+        "PaeyentEventDataBuffer.replaceLast(): empty, dropping event"
       );
       return -1;
     }

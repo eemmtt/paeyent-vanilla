@@ -5,39 +5,38 @@ import { UIEventHandlers, UIEventLookup } from "./ui/events";
 import { PointerEventLookup, type PointerType } from "./types/PaeyentEvent";
 
 function mainloop(model: Model) {
-  // loop over events
-  for (let i = 0; i < model.eventQueue.top; i++) {
-    if (model.eventQueue.id[i] === 0) {
-      // PointerEvent
-      ToolHandlers[model.curr_tool * ToolStride + model.eventQueue.type[i]](
+  // loop over each PaeyentEvent and call their handler
+  for (let i = 0; i < model.eventBuffer.top; i++) {
+    if (model.eventBuffer.id[i] === 0 /* PointerEvent */) {
+      ToolHandlers[model.curr_tool * ToolStride + model.eventBuffer.type[i]](
         model,
-        model.eventQueue.dataIdx[i]
+        model.eventBuffer.dataIdx[i]
       );
-    } else if (model.eventQueue.id[i] === 1) {
-      // UI event
-      UIEventHandlers[model.eventQueue.type[i]](model);
+    } else if (model.eventBuffer.id[i] === 1 /* UIEvent */) {
+      UIEventHandlers[model.eventBuffer.type[i]](model);
     } else {
       console.warn(
-        `mainloop: Unhandled model.eventQueue.id ${model.eventQueue.id[i]}`
+        `mainloop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
       );
     }
   }
-  model.eventQueue.clear();
-  model.pointerDataQueue.clear();
+  model.eventBuffer.clear();
+  model.eventDataBuffer.clear();
 
-  /* render renderQueue */
+  // render each item in the renderPassBuffer
   model.render(model);
-  model.renderQueue = []; //TODO: make fixed size ring buffer
+  model.renderPassBuffer.clear();
+  model.renderPassDataBuffer.clear();
 
   requestAnimationFrame(() => mainloop(model));
 }
 
 /* window & input handlers */
 function onpointerdown(event: Event, model: Model) {
-  model.eventQueue.push(
+  model.eventBuffer.push(
     0, // PointerEvent
-    PointerEventLookup["pointerdown"],
-    model.pointerDataQueue.push(
+    0, // PointerEventLookup["pointerdown"] === 0
+    model.eventDataBuffer.push(
       (event as PointerEvent).x,
       (event as PointerEvent).y,
       (event as PointerEvent).pressure,
@@ -49,15 +48,14 @@ function onpointerdown(event: Event, model: Model) {
 function onpointermove(event: Event, model: Model) {
   // overwrite repeated pointermoves
   if (
-    model.eventQueue.top > 0 && // array is not empty
-    model.eventQueue.id[model.eventQueue.top - 1] === 1 && // last item is a PointerEvent
-    model.eventQueue.type[model.eventQueue.top - 1] ===
-      PointerEventLookup["pointermove"] // last item is a pointermove event
+    model.eventBuffer.top > 0 && // array is not empty
+    model.eventBuffer.id[model.eventBuffer.top - 1] === 1 && // last item is a PointerEvent
+    model.eventBuffer.type[model.eventBuffer.top - 1] === 2 // last item is a "pointermove" event
   ) {
-    model.eventQueue.replaceLast(
+    model.eventBuffer.replaceLast(
       0, // PointerEvent
-      PointerEventLookup["pointermove"],
-      model.pointerDataQueue.replaceLast(
+      2, // PointerEventLookup["pointermove"] === 2
+      model.eventDataBuffer.replaceLast(
         (event as PointerEvent).x,
         (event as PointerEvent).y,
         (event as PointerEvent).pressure,
@@ -66,10 +64,10 @@ function onpointermove(event: Event, model: Model) {
     );
   }
 
-  model.eventQueue.push(
+  model.eventBuffer.push(
     0, // PointerEvent
-    PointerEventLookup["pointermove"],
-    model.pointerDataQueue.push(
+    2, // PointerEventLookup["pointermove"] === 2
+    model.eventDataBuffer.push(
       (event as PointerEvent).x,
       (event as PointerEvent).y,
       (event as PointerEvent).pressure,
@@ -79,10 +77,10 @@ function onpointermove(event: Event, model: Model) {
 }
 
 function onpointerup(event: Event, model: Model) {
-  model.eventQueue.push(
+  model.eventBuffer.push(
     0, // PointerEvent
-    PointerEventLookup["pointerup"],
-    model.pointerDataQueue.push(
+    1, // PointerEventLookup["pointerup"] === 1
+    model.eventDataBuffer.push(
       (event as PointerEvent).x,
       (event as PointerEvent).y,
       (event as PointerEvent).pressure,
@@ -96,25 +94,25 @@ function onkeydown(event: KeyboardEvent, model: Model) {
     //console.log("key pressed: ", event.key);
 
     if (event.key == "m") {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-menu"],
         -1 // No data
       );
     } else if (event.key == "f") {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-fan"],
         -1 // No data
       );
     } else if (event.key == "l") {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-line"],
         -1 // No data
       );
     } else if (event.key == "b") {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-brush"],
         -1 // No data
@@ -140,12 +138,12 @@ async function main() {
   window.addEventListener("resize", () => {
     // debounce consecutive resize calls, nasty style
     if (
-      model.eventQueue.top > 0 && // array is not empty
-      model.eventQueue.id[model.eventQueue.top - 1] === 1 && // last item is a UIEvent
-      model.eventQueue.type[model.eventQueue.top - 1] !==
+      model.eventBuffer.top > 0 && // array is not empty
+      model.eventBuffer.id[model.eventBuffer.top - 1] === 1 && // last item is a UIEvent
+      model.eventBuffer.type[model.eventBuffer.top - 1] !==
         UIEventLookup["window-resize"] // last item is not a window-resize event
     ) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["window-resize"],
         -1 // No data
@@ -162,7 +160,7 @@ async function main() {
 
   model.slider_r.addEventListener("input", (e) => {
     if (e.target === model.slider_r) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-slider-red"],
         -1 // No data
@@ -171,7 +169,7 @@ async function main() {
   });
   model.slider_g.addEventListener("input", (e) => {
     if (e.target === model.slider_g) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-slider-green"],
         -1 // No data
@@ -180,7 +178,7 @@ async function main() {
   });
   model.slider_b.addEventListener("input", (e) => {
     if (e.target === model.slider_b) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-slider-blue"],
         -1 // No data
@@ -191,7 +189,7 @@ async function main() {
   /* button-container events */
   model.menu_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.menu_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-menu"],
         -1 // No data
@@ -200,7 +198,7 @@ async function main() {
   });
   model.brush_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.brush_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-brush"],
         -1 // No data
@@ -209,7 +207,7 @@ async function main() {
   });
   model.fan_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.fan_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-fan"],
         -1 // No data
@@ -218,7 +216,7 @@ async function main() {
   });
   model.line_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.line_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-line"],
         -1 // No data
@@ -229,7 +227,7 @@ async function main() {
   /* modal events */
   model.modal_container.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_container) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-modal-container"],
         -1 // No data
@@ -238,7 +236,7 @@ async function main() {
   });
   model.modal_close_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_close_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-modal-close"],
         -1 // No data
@@ -248,7 +246,7 @@ async function main() {
 
   model.radio_constraint_type_none.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_none) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-constraint-type-none"],
         -1 // No data
@@ -257,7 +255,7 @@ async function main() {
   });
   model.radio_constraint_type_time.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_time) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-constraint-type-time"],
         -1 // No data
@@ -266,7 +264,7 @@ async function main() {
   });
   model.constraint_type_time_minutes.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_minutes) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-constraint-time-minutes"],
         -1 // No data
@@ -275,7 +273,7 @@ async function main() {
   });
   model.constraint_type_time_seconds.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_seconds) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-constraint-time-seconds"],
         -1 // No data
@@ -285,7 +283,7 @@ async function main() {
 
   model.radio_constraint_type_actions.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_actions) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-constraint-type-actions"],
         -1 // No data
@@ -294,7 +292,7 @@ async function main() {
   });
   model.constraint_type_actions_count.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_actions_count) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["input-constraint-actions-count"],
         -1 // No data
@@ -304,7 +302,7 @@ async function main() {
 
   model.radio_colorpicker_type_rgb.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_rgb) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-colorpicker-type-rgb"],
         -1 // No data
@@ -313,7 +311,7 @@ async function main() {
   });
   model.radio_colorpicker_type_hsv.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_hsv) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-colorpicker-type-hsv"],
         -1 // No data
@@ -323,7 +321,7 @@ async function main() {
 
   model.radio_scratch_yes.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_yes) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-scratch-yes"],
         -1 // No data
@@ -332,7 +330,7 @@ async function main() {
   });
   model.radio_scratch_no.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_no) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["radio-scratch-no"],
         -1 // No data
@@ -342,7 +340,7 @@ async function main() {
 
   model.modal_start_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_start_session_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-start-session"],
         -1 // No data
@@ -351,7 +349,7 @@ async function main() {
   });
   model.modal_end_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_end_session_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-end-session"],
         -1 // No data
@@ -360,7 +358,7 @@ async function main() {
   });
   model.modal_save_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_save_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-save"],
         -1 // No data
@@ -369,7 +367,7 @@ async function main() {
   });
   model.modal_share_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_share_button) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-share"],
         -1 // No data
@@ -378,7 +376,7 @@ async function main() {
   });
   model.modal_about_section.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_about_section) {
-      model.eventQueue.push(
+      model.eventBuffer.push(
         1, // UIEvent
         UIEventLookup["button-about"],
         -1 // No data

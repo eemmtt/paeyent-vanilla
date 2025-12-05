@@ -1,9 +1,14 @@
-import { type RenderPass } from "../graphics/wgpu";
 import { menu_build } from "../ui/initializers";
-import { graphics_build, type RenderFunction } from "../graphics/Graphics";
+import {
+  graphics_build,
+  type Color,
+  type RenderFunction,
+} from "../graphics/Graphics";
 import type { PolyUniform } from "./PolyUniform";
-import { PaeyentEventArray } from "./PaeyentEventArray";
-import { PointerEventDataArray } from "./PointerEventDataArray";
+import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
+import { PaeyentEventDataBuffer } from "./PaeyentEventDataBuffer";
+import type { RenderPassBuffer } from "./RenderPassBuffer";
+import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
 
 // TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 export interface Model {
@@ -21,6 +26,7 @@ export interface Model {
   bg_texture_view: GPUTextureView;
   fg_texture_view: GPUTextureView;
   an_texture_view: GPUTextureView;
+  clear_color: Color;
 
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;
@@ -32,7 +38,8 @@ export interface Model {
   composite_pipeline: GPURenderPipeline;
 
   render: RenderFunction;
-  renderQueue: RenderPass[];
+  renderPassBuffer: RenderPassBuffer;
+  renderPassDataBuffer: RenderPassDataBuffer;
 
   /* drawing state */
   curr_tool: number; //used to index into toolhandlers. See tool.ts
@@ -40,8 +47,8 @@ export interface Model {
   pts: Float32Array;
   num_pts: number;
   color: Float32Array;
-  eventQueue: PaeyentEventArray;
-  pointerDataQueue: PointerEventDataArray;
+  eventBuffer: PaeyentEventBuffer;
+  eventDataBuffer: PaeyentEventDataBuffer;
   pointerEventVoid: PointerEvent;
 
   /* menu state */
@@ -119,8 +126,8 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     pts: new Float32Array(32),
     num_pts: 0,
     color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
-    eventQueue: new PaeyentEventArray(512),
-    pointerDataQueue: new PointerEventDataArray(512),
+    eventBuffer: new PaeyentEventBuffer(127),
+    eventDataBuffer: new PaeyentEventDataBuffer(127),
     pointerEventVoid: new PointerEvent("none"),
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);

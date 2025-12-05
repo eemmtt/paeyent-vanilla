@@ -3,9 +3,10 @@ import lineShaderCode from "../shaders/polyline.wgsl?raw";
 import fanShaderCode from "../shaders/polyfan.wgsl?raw";
 
 import { type Model } from "../types/Model";
-import type { Point } from "../types/Point";
 import { PolyUniform } from "../types/PolyUniform";
-import type { GraphicsModel } from "./Graphics";
+import type { Color, GraphicsModel } from "./Graphics";
+import { RenderPassBuffer } from "../types/RenderPassBuffer";
+import { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 
 type FillStyle = "transparent" | "white";
 
@@ -37,26 +38,28 @@ export async function wgpu_init(
     format,
   });
 
-  let [bg_texture, bg_texture_view] = create_texture(
+  const [bg_texture, bg_texture_view] = create_texture(
     format,
     device,
     canvas,
     "white"
   );
-  let [fg_texture, fg_texture_view] = create_texture(
+  const [fg_texture, fg_texture_view] = create_texture(
     format,
     device,
     canvas,
     "transparent"
   );
-  let [an_texture, an_texture_view] = create_texture(
+  const [an_texture, an_texture_view] = create_texture(
     format,
     device,
     canvas,
     "transparent"
   );
 
-  let [composite_pipeline, composite_bindgroup] = create_composite_resources(
+  const clear_color: Color = [1, 1, 1, 1];
+
+  const [composite_pipeline, composite_bindgroup] = create_composite_resources(
     device,
     format,
     bg_texture_view,
@@ -64,9 +67,12 @@ export async function wgpu_init(
     an_texture_view
   );
 
-  let poly_uniform = new PolyUniform(device, canvas);
-  let [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
+  const poly_uniform = new PolyUniform(device, canvas);
+  const [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
     create_poly_resources(device, format, poly_uniform);
+
+  const renderPassBuffer = new RenderPassBuffer(127);
+  const renderPassDataBuffer = new RenderPassDataBuffer(127);
 
   console.log("Intialized WebGPU Context");
   return {
@@ -82,6 +88,7 @@ export async function wgpu_init(
     bg_texture_view,
     fg_texture_view,
     an_texture_view,
+    clear_color,
 
     poly_uniform,
     poly_buffer,
@@ -90,294 +97,61 @@ export async function wgpu_init(
     fan_pipeline,
     composite_pipeline,
     composite_bindgroup,
-    renderQueue: [],
+
+    renderPassBuffer,
+    renderPassDataBuffer,
     render: wgpu_render,
   };
 }
 
-//TODO: instead of passing objects around and if/else'ing
-//      in render(), implement as function table
 //TODO: refactor as normal drawing api e.g.,
 //      clear(target_layer: LayerType, clear_color: Color)
 //      line(target_layer: LayerType, a_x: number, a_y: number, b_x: number, b_y: number, color?, line_thickness?)
 //      triangle(target_layer: LayerType, a_x: number, a_y: number, b_x: number, b_y: number, c_x: number, c_y: number, color?)
-export type RenderPass =
-  | {
-      type: "polyline-clear-fg-and-draw-bg";
-      start_pos: Point;
-      end_pos: Point;
-    }
-  | {
-      type: "polyline-clear-fg-and-draw-fg";
-      start_x: number;
-      start_y: number;
-      end_x: number;
-      end_y: number;
-    }
-  | {
-      type: "polyfan-clear-fg-and-draw-bg";
-      start_pos: Point;
-      mid_pos: Point;
-      end_pos: Point;
-    }
-  | {
-      type: "polyfan-clear-fg-and-draw-fg";
-      start_pos: Point;
-      mid_pos: Point;
-      end_pos: Point;
-    }
-  | {
-      type: "clear-fg";
-    }
-  | {
-      type: "clear-all";
-    };
+export const RenderPassToolIdxOffset = 4; //clear f()'s 0-3, tools 4 ->
 
+//TODO: rethink api design... [tool]-fg will always clear before draw?
+export const RenderPassLookup = {
+  "clear-fg": 0,
+  "clear-bg": 1,
+  "clear-anno": 2,
+  "clear-all": 3,
+  "line-fg": 4,
+  "line-bg": 5,
+  "fan-fg": 6,
+  "fan-bg": 7,
+  "brush-fg": 8,
+  "brush-bg": 9,
+} as const;
+
+export const RenderPassHandlers = [
+  onClearFg,
+  onClearBg,
+  onClearAnno,
+  onClearAll,
+  onLineFg,
+  onLineBg,
+  onFanFg,
+  onFanBg,
+  onBrushFg,
+  onBrushBg,
+] as const;
+
+//TODO: batch repeated calls when recreating background from operation history
+//      e.g., write a shader that instances n triangles for fan, n rectangles for line etc.
 function wgpu_render(model: Model) {
   let view = model.surface.getCurrentTexture().createView();
   const encoder = model.device.createCommandEncoder({
     label: "Render Encoder",
   });
 
-  for (let i = 0; i < model.renderQueue.length; i++) {
-    const pass = model.renderQueue[i];
-
-    if (pass.type == "polyline-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
-      model.poly_uniform.set_pos(1, pass.end_pos[0], pass.end_pos[1]);
-      model.poly_uniform.set_rgba(
-        model.color[0],
-        model.color[1],
-        model.color[2],
-        model.color[3]
-      );
-      model.device.queue.writeBuffer(
-        model.poly_buffer,
-        i * model.poly_uniform.aligned_size,
-        model.poly_uniform.data.buffer
-      );
-
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "FG Clear",
-          colorAttachments: [
-            {
-              view: model.fg_texture_view,
-              clearValue: [0, 0, 0, 0],
-              loadOp: "clear" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-        renderpass.end();
-      }
-
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "BG Render Pass",
-          colorAttachments: [
-            {
-              view: model.bg_texture_view,
-              //clearValue: [1, 0, 0, 1],
-              loadOp: "load" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-
-        renderpass.setPipeline(model.line_pipeline);
-        renderpass.setBindGroup(0, model.poly_bindgroup, [
-          i * model.poly_uniform.aligned_size,
-        ]);
-        renderpass.draw(6, 1);
-        renderpass.end();
-      }
-
-      continue;
-    }
-    // end polyline-clear-fg-and-draw-bg
-
-    if (pass.type == "polyline-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos(0, pass.start_x, pass.start_y);
-      model.poly_uniform.set_pos(1, pass.end_x, pass.end_y);
-      model.poly_uniform.set_rgba(
-        model.color[0],
-        model.color[1],
-        model.color[2],
-        model.color[3]
-      );
-
-      model.device.queue.writeBuffer(
-        model.poly_buffer,
-        i * model.poly_uniform.aligned_size,
-        model.poly_uniform.data.buffer
-      );
-
-      const renderpass = encoder.beginRenderPass({
-        label: "FG Clear and Draw Pass",
-        colorAttachments: [
-          {
-            view: model.fg_texture_view,
-            clearValue: [0, 0, 0, 0],
-            loadOp: "clear" as GPULoadOp,
-            storeOp: "store" as GPUStoreOp,
-          },
-        ],
-      });
-
-      renderpass.setPipeline(model.line_pipeline);
-      renderpass.setBindGroup(0, model.poly_bindgroup, [
-        i * model.poly_uniform.aligned_size,
-      ]);
-      renderpass.draw(6, 1);
-      renderpass.end();
-      continue;
-    }
-    // end polyline-clear-fg-and-draw-fg
-
-    if (pass.type == "polyfan-clear-fg-and-draw-bg") {
-      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
-      model.poly_uniform.set_pos(1, pass.mid_pos[0], pass.mid_pos[1]);
-      model.poly_uniform.set_pos(2, pass.end_pos[0], pass.end_pos[1]);
-      model.poly_uniform.set_rgba(
-        model.color[0],
-        model.color[1],
-        model.color[2],
-        model.color[3]
-      );
-
-      model.device.queue.writeBuffer(
-        model.poly_buffer,
-        i * model.poly_uniform.aligned_size,
-        model.poly_uniform.data.buffer
-      );
-
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "FG Clear",
-          colorAttachments: [
-            {
-              view: model.fg_texture_view,
-              clearValue: [0, 0, 0, 0],
-              loadOp: "clear" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-        renderpass.end();
-      }
-
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "BG Render Pass",
-          colorAttachments: [
-            {
-              view: model.bg_texture_view,
-              loadOp: "load" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-
-        renderpass.setPipeline(model.fan_pipeline);
-        renderpass.setBindGroup(0, model.poly_bindgroup, [
-          i * model.poly_uniform.aligned_size,
-        ]);
-        renderpass.draw(3, 1);
-        renderpass.end();
-      }
-
-      continue;
-    }
-
-    if (pass.type == "polyfan-clear-fg-and-draw-fg") {
-      model.poly_uniform.set_pos(0, pass.start_pos[0], pass.start_pos[1]);
-      model.poly_uniform.set_pos(1, pass.mid_pos[0], pass.mid_pos[1]);
-      model.poly_uniform.set_pos(2, pass.end_pos[0], pass.end_pos[1]);
-      model.poly_uniform.set_rgba(
-        model.color[0],
-        model.color[1],
-        model.color[2],
-        model.color[3]
-      );
-
-      model.device.queue.writeBuffer(
-        model.poly_buffer,
-        i * model.poly_uniform.aligned_size,
-        model.poly_uniform.data.buffer
-      );
-
-      const renderpass = encoder.beginRenderPass({
-        label: "FG Clear and Draw Pass",
-        colorAttachments: [
-          {
-            view: model.fg_texture_view,
-            clearValue: [0, 0, 0, 0],
-            loadOp: "clear" as GPULoadOp,
-            storeOp: "store" as GPUStoreOp,
-          },
-        ],
-      });
-
-      renderpass.setPipeline(model.fan_pipeline);
-      renderpass.setBindGroup(0, model.poly_bindgroup, [
-        i * model.poly_uniform.aligned_size,
-      ]);
-      renderpass.draw(3, 1);
-      renderpass.end();
-      continue;
-    }
-
-    if (pass.type == "clear-fg") {
-      const renderpass = encoder.beginRenderPass({
-        label: "FG Clear",
-        colorAttachments: [
-          {
-            view: model.fg_texture_view,
-            clearValue: [0, 0, 0, 0],
-            loadOp: "clear" as GPULoadOp,
-            storeOp: "store" as GPUStoreOp,
-          },
-        ],
-      });
-      renderpass.end();
-
-      continue;
-    }
-
-    if (pass.type == "clear-all") {
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "FG Clear",
-          colorAttachments: [
-            {
-              view: model.fg_texture_view,
-              clearValue: [0, 0, 0, 0],
-              loadOp: "clear" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-        renderpass.end();
-      }
-
-      {
-        const renderpass = encoder.beginRenderPass({
-          label: "BG Clear",
-          colorAttachments: [
-            {
-              view: model.bg_texture_view,
-              clearValue: [1, 1, 1, 1],
-              loadOp: "clear" as GPULoadOp,
-              storeOp: "store" as GPUStoreOp,
-            },
-          ],
-        });
-        renderpass.end();
-      }
-
-      continue;
-    }
+  // call each RenderPassHandler
+  for (let i = 0; i < model.renderPassBuffer.top; i++) {
+    RenderPassHandlers[model.renderPassBuffer.type[i]](
+      model,
+      encoder,
+      model.renderPassBuffer.dataIdx[i]
+    );
   }
 
   // always finish with composite pass
@@ -387,7 +161,7 @@ function wgpu_render(model: Model) {
       colorAttachments: [
         {
           view,
-          clearValue: [0, 0, 0, 0],
+          //clearValue: [0, 0, 0, 0],
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -675,4 +449,362 @@ function create_poly_resources(
   });
 
   return [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline];
+}
+
+function onClearFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx !== -1) {
+    console.warn(
+      `onClearFg: received dataIdx === ${dataIdx}, but -1 was expected`
+    );
+    return;
+  }
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Foreground",
+      colorAttachments: [
+        {
+          view: model.fg_texture_view,
+          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+}
+
+function onClearBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx !== -1) {
+    console.warn(
+      `onClearBg: received dataIdx === ${dataIdx}, but -1 was expected`
+    );
+    return;
+  }
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Background",
+      colorAttachments: [
+        {
+          view: model.bg_texture_view,
+          clearValue: model.clear_color,
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+}
+
+function onClearAnno(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx !== -1) {
+    console.warn(
+      `onClearAnno: received dataIdx === ${dataIdx}, but -1 was expected`
+    );
+    return;
+  }
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Annotation",
+      colorAttachments: [
+        {
+          view: model.an_texture_view,
+          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+}
+
+function onClearAll(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx !== -1) {
+    console.warn(
+      `onClearAll: received dataIdx === ${dataIdx}, but -1 was expected`
+    );
+    return;
+  }
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Annotation",
+      colorAttachments: [
+        {
+          view: model.an_texture_view,
+          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Foreground",
+      colorAttachments: [
+        {
+          view: model.fg_texture_view,
+          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Background",
+      colorAttachments: [
+        {
+          view: model.bg_texture_view,
+          clearValue: model.clear_color, //defaults to 0,0,0,0?
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+}
+
+function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
+    console.warn(`onLineFg: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.poly_uniform.set_pos(
+    0,
+    model.renderPassDataBuffer.x0[dataIdx],
+    model.renderPassDataBuffer.y0[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    1,
+    model.renderPassDataBuffer.x1[dataIdx],
+    model.renderPassDataBuffer.y1[dataIdx]
+  );
+  model.poly_uniform.set_rgba(
+    model.renderPassDataBuffer.red[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
+    model.renderPassDataBuffer.green[dataIdx],
+    1
+  );
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Foreground Clear and Draw",
+    colorAttachments: [
+      {
+        view: model.fg_texture_view,
+        //clearValue: [0, 0, 0, 0],
+        loadOp: "clear" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.line_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
+}
+function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
+    console.warn(`onLineBg: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.poly_uniform.set_pos(
+    0,
+    model.renderPassDataBuffer.x0[dataIdx],
+    model.renderPassDataBuffer.y0[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    1,
+    model.renderPassDataBuffer.x1[dataIdx],
+    model.renderPassDataBuffer.y1[dataIdx]
+  );
+  model.poly_uniform.set_rgba(
+    model.renderPassDataBuffer.red[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
+    model.renderPassDataBuffer.green[dataIdx],
+    1
+  );
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  encoder
+    .beginRenderPass({
+      label: "Clear Foreground",
+      colorAttachments: [
+        {
+          view: model.fg_texture_view,
+          //clearValue: [0, 0, 0, 0],
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Draw Background",
+    colorAttachments: [
+      {
+        view: model.bg_texture_view,
+        loadOp: "load" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.line_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
+}
+function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
+    console.warn(`onFanFg: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.poly_uniform.set_pos(
+    0,
+    model.renderPassDataBuffer.x0[dataIdx],
+    model.renderPassDataBuffer.y0[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    1,
+    model.renderPassDataBuffer.x1[dataIdx],
+    model.renderPassDataBuffer.y1[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    2,
+    model.renderPassDataBuffer.x2[dataIdx],
+    model.renderPassDataBuffer.y2[dataIdx]
+  );
+  model.poly_uniform.set_rgba(
+    model.renderPassDataBuffer.red[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
+    model.renderPassDataBuffer.green[dataIdx],
+    1
+  );
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Foreground Clear and Draw",
+    colorAttachments: [
+      {
+        view: model.fg_texture_view,
+        //clearValue: [0, 0, 0, 0],
+        loadOp: "clear" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.fan_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(3, 1);
+  renderpass.end();
+}
+function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
+    console.warn(`onFanBg: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.poly_uniform.set_pos(
+    0,
+    model.renderPassDataBuffer.x0[dataIdx],
+    model.renderPassDataBuffer.y0[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    1,
+    model.renderPassDataBuffer.x1[dataIdx],
+    model.renderPassDataBuffer.y1[dataIdx]
+  );
+  model.poly_uniform.set_pos(
+    2,
+    model.renderPassDataBuffer.x2[dataIdx],
+    model.renderPassDataBuffer.y2[dataIdx]
+  );
+  model.poly_uniform.set_rgba(
+    model.renderPassDataBuffer.red[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
+    model.renderPassDataBuffer.green[dataIdx],
+    1
+  );
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  encoder
+    .beginRenderPass({
+      label: "Foreground Clear",
+      colorAttachments: [
+        {
+          view: model.fg_texture_view,
+          //clearValue: [0, 0, 0, 0],
+          loadOp: "clear" as GPULoadOp,
+          storeOp: "store" as GPUStoreOp,
+        },
+      ],
+    })
+    .end();
+
+  const renderpass = encoder.beginRenderPass({
+    label: "BG Render Pass",
+    colorAttachments: [
+      {
+        view: model.bg_texture_view,
+        loadOp: "load" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.fan_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(3, 1);
+  renderpass.end();
+}
+
+function onBrushFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  console.warn("onBrushFg not implemented");
+  return;
+}
+function onBrushBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+  console.warn("onBrushBg not implemented");
+  return;
 }

@@ -2,80 +2,89 @@ import { type Model } from "./Model";
 import { PT_STRIDE } from "./Point";
 
 //TODO: implement brush
-export type ToolType = "polyline" | "polyfan" /*| "brush"*/;
+export type ToolType = "line" | "fan" /*| "brush"*/;
 
-//each tool implements: start, stop, hover, cancel. 4 total.
-export const ToolStride = 4;
+export const ToolStride = 4; //each tool implements: pointerdown, pointerup, pointermove, cancel. 4 total.
 export const ToolLookup = {
-  polyline: 0,
-  polyfan: 1,
+  line: 0,
+  fan: 1,
   //brush: 2,
 } as const;
 
 export const ToolHandlers = [
-  polyline_pointerdown,
-  polyline_pointerup,
-  polyline_pointermove,
-  polyline_cancel,
-  polyfan_pointerdown,
-  polyfan_pointerup,
-  polyfan_pointermove,
-  polyfan_cancel,
-  // brush_pointerdown,`
+  line_pointerdown,
+  line_pointerup,
+  line_pointermove,
+  line_cancel,
+  fan_pointerdown,
+  fan_pointerup,
+  fan_pointermove,
+  fan_cancel,
+  // brush_pointerdown,
   // brush_pointerup,
   // brush_pointermove,
   // brush_cancel,
 ] as const;
 
 /* POLY LINE */
-function polyline_pointerdown(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.pointerDataQueue.top) {
-    console.warn(`polyline_pointerdown: invalid dataIdx ${dataIdx}`);
+function line_pointerdown(model: Model, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
+    console.warn(`line_pointerdown: invalid dataIdx ${dataIdx}`);
     return;
   }
 
   if (!model.is_drawing) {
-    polyline_start(
+    line_start(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   } else {
-    polyline_stop(
+    line_stop(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   }
 }
-function polyline_pointerup(model: Model, dataIdx: number) {}
-function polyline_pointermove(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.pointerDataQueue.top) {
-    console.warn(`polyline_pointermove: invalid dataIdx ${dataIdx}`);
+function line_pointerup(model: Model, dataIdx: number) {}
+function line_pointermove(model: Model, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
+    console.warn(`line_pointermove: invalid dataIdx ${dataIdx}`);
     return;
   }
 
   if (model.is_drawing) {
-    polyline_hover(
+    line_hover(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   }
 }
 
-function polyline_start(model: Model, x: number, y: number) {
+function line_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
   model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
   return;
 }
-function polyline_stop(model: Model, x: number, y: number) {
-  model.renderQueue.push({
-    type: "polyline-clear-fg-and-draw-bg",
-    start_pos: [model.pts[0], model.pts[0 + 1]],
-    end_pos: [x * model.dpr, y * model.dpr],
-  });
+function line_stop(model: Model, x: number, y: number) {
+  // draw line to background
+  model.renderPassBuffer.push(
+    5, //RenderPassLookup["line-bg"] === 5
+    model.renderPassDataBuffer.push(
+      model.pts[0 * PT_STRIDE],
+      model.pts[0 * PT_STRIDE + 1],
+      x * model.dpr,
+      y * model.dpr,
+      -1,
+      -1,
+      model.color[0],
+      model.color[1],
+      model.color[2]
+    )
+  );
 
   const radius_squared = 15 * 15;
   const dist_squared =
@@ -84,92 +93,120 @@ function polyline_stop(model: Model, x: number, y: number) {
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
   } else {
-    polyline_start(model, x, y);
+    line_start(model, x, y);
   }
   return;
 }
 
-function polyline_hover(model: Model, x: number, y: number) {
-  model.renderQueue.push({
-    type: "polyline-clear-fg-and-draw-fg",
-    start_x: model.pts[0],
-    start_y: model.pts[0 + 1],
-    end_x: x * model.dpr,
-    end_y: y * model.dpr,
-  });
+function line_hover(model: Model, x: number, y: number) {
+  // draw line to foreground
+  model.renderPassBuffer.push(
+    4, //RenderPassLookup["line-fg"] === 4
+    model.renderPassDataBuffer.push(
+      model.pts[0 * PT_STRIDE],
+      model.pts[0 * PT_STRIDE + 1],
+      x * model.dpr,
+      y * model.dpr,
+      -1,
+      -1,
+      model.color[0],
+      model.color[1],
+      model.color[2]
+    )
+  );
 }
 
-function polyline_cancel(model: Model, dataIdx: number) {
+function line_cancel(model: Model, dataIdx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
-  model.renderQueue.push({
-    type: "clear-fg",
-  });
+  model.renderPassBuffer.push(
+    0, // RenderPassLookup["clear-fg"] === 0
+    -1 // no data
+  );
 }
 
 /* POLY FAN */
 
-function polyfan_pointerdown(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.pointerDataQueue.top) {
-    console.warn(`polyfan_pointerdown: invalid dataIdx ${dataIdx}`);
+function fan_pointerdown(model: Model, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
+    console.warn(`fan_pointerdown: invalid dataIdx ${dataIdx}`);
     return;
   }
 
   if (!model.is_drawing) {
-    polyfan_start(
+    fan_start(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   } else {
-    polyfan_stop(
+    fan_stop(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   }
 }
-function polyfan_pointerup(model: Model, dataIdx: number) {}
-function polyfan_pointermove(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.pointerDataQueue.top) {
-    console.warn(`polyfan_pointermove: invalid dataIdx ${dataIdx}`);
+function fan_pointerup(model: Model, dataIdx: number) {}
+function fan_pointermove(model: Model, dataIdx: number) {
+  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
+    console.warn(`fan_pointermove: invalid dataIdx ${dataIdx}`);
     return;
   }
 
   if (model.is_drawing) {
-    polyfan_hover(
+    fan_hover(
       model,
-      model.pointerDataQueue.x[dataIdx],
-      model.pointerDataQueue.y[dataIdx]
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
     );
   }
 }
 
-function polyfan_start(model: Model, x: number, y: number) {
+function fan_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
   model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
   return;
 }
-function polyfan_stop(model: Model, x: number, y: number) {
+function fan_stop(model: Model, x: number, y: number) {
   if (model.num_pts == 1) {
-    // draw line
-    model.renderQueue.push({
-      type: "polyline-clear-fg-and-draw-bg",
-      start_pos: [model.pts[0], model.pts[0 + 1]],
-      end_pos: [x * model.dpr, y * model.dpr],
-    });
+    // draw line to background
+    model.renderPassBuffer.push(
+      5, //RenderPassLookup["line-bg"] === 5
+      model.renderPassDataBuffer.push(
+        model.pts[0 * PT_STRIDE],
+        model.pts[0 * PT_STRIDE + 1],
+        x * model.dpr,
+        y * model.dpr,
+        -1,
+        -1,
+        model.color[0],
+        model.color[1],
+        model.color[2]
+      )
+    );
+
     // add midpoint
     model.pts.set([x * model.dpr, y * model.dpr], 1 * PT_STRIDE);
     model.num_pts = 2;
   } else if (model.num_pts == 2) {
-    //draw triangle
-    model.renderQueue.push({
-      type: "polyfan-clear-fg-and-draw-bg",
-      start_pos: [model.pts[0], model.pts[0 + 1]],
-      mid_pos: [model.pts[1 * PT_STRIDE], model.pts[1 * PT_STRIDE + 1]],
-      end_pos: [x * model.dpr, y * model.dpr],
-    });
+    // draw triangle to background
+    model.renderPassBuffer.push(
+      7, //RenderPassLookup["fan-bg"] === 7
+      model.renderPassDataBuffer.push(
+        model.pts[0 * PT_STRIDE],
+        model.pts[0 * PT_STRIDE + 1],
+        model.pts[1 * PT_STRIDE],
+        model.pts[1 * PT_STRIDE + 1],
+        x * model.dpr,
+        y * model.dpr,
+        model.color[0],
+        model.color[1],
+        model.color[2]
+      )
+    );
+
     //update midpoint
     model.pts.set([x * model.dpr, y * model.dpr], 1 * PT_STRIDE);
   }
@@ -184,30 +221,48 @@ function polyfan_stop(model: Model, x: number, y: number) {
   }
   return;
 }
-function polyfan_hover(model: Model, x: number, y: number) {
+function fan_hover(model: Model, x: number, y: number) {
   if (model.num_pts == 1) {
-    model.renderQueue.push({
-      type: "polyline-clear-fg-and-draw-fg",
-      start_x: model.pts[0],
-      start_y: model.pts[0 + 1],
-      end_x: x * model.dpr,
-      end_y: y * model.dpr,
-    });
+    // draw line to foreground
+    model.renderPassBuffer.push(
+      4, //RenderPassLookup["line-fg"] === 4
+      model.renderPassDataBuffer.push(
+        model.pts[0 * PT_STRIDE],
+        model.pts[0 * PT_STRIDE + 1],
+        x * model.dpr,
+        y * model.dpr,
+        -1,
+        -1,
+        model.color[0],
+        model.color[1],
+        model.color[2]
+      )
+    );
   } else if (model.num_pts == 2) {
-    model.renderQueue.push({
-      type: "polyfan-clear-fg-and-draw-fg",
-      start_pos: [model.pts[0], model.pts[0 + 1]],
-      mid_pos: [model.pts[1 * PT_STRIDE], model.pts[1 * PT_STRIDE + 1]],
-      end_pos: [x * model.dpr, y * model.dpr],
-    });
+    // draw triangle to foreground
+    model.renderPassBuffer.push(
+      6, //RenderPassLookup["fan-fg"] === 6
+      model.renderPassDataBuffer.push(
+        model.pts[0 * PT_STRIDE],
+        model.pts[0 * PT_STRIDE + 1],
+        model.pts[1 * PT_STRIDE],
+        model.pts[1 * PT_STRIDE + 1],
+        x * model.dpr,
+        y * model.dpr,
+        model.color[0],
+        model.color[1],
+        model.color[2]
+      )
+    );
   }
 }
-function polyfan_cancel(model: Model, dataIdx: number) {
+function fan_cancel(model: Model, dataIdx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
-  model.renderQueue.push({
-    type: "clear-fg",
-  });
+  model.renderPassBuffer.push(
+    0, // RenderPassLookup["clear-fg"] === 0
+    -1 // no data
+  );
 }
 
 /* BRUSH */

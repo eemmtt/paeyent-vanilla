@@ -1,15 +1,19 @@
-export class PaeyentEventArray {
+export class PaeyentEventBuffer {
   id: Uint8Array; // 0: PointerEventType | 1: UIEventType
   type: Uint8Array; // UIEventLookup value | PointerEventLookup value
-  dataIdx: Uint8Array; // data buffer idx
+  dataIdx: Int8Array; // data buffer idx
 
   top: number;
   capacity: number;
 
-  constructor(capacity: number = 128) {
+  constructor(capacity: number = 127) {
+    if (capacity > 127) {
+      console.warn("PaeyentEventBuffer capacity max value is 127");
+      capacity = 127;
+    }
     this.id = new Uint8Array(capacity);
     this.type = new Uint8Array(capacity);
-    this.dataIdx = new Uint8Array(capacity);
+    this.dataIdx = new Int8Array(capacity);
     this.top = 0;
     this.capacity = capacity;
   }
@@ -17,7 +21,7 @@ export class PaeyentEventArray {
   // returns index of pushed data
   push(id: number, type: number, dataIdx: number): number {
     if (this.top === this.capacity - 1) {
-      console.warn("PaeyentEventQueue.push(): full, dropping event");
+      console.warn("PaeyentEventBuffer.push(): full, dropping event");
       return -1;
     }
 
@@ -30,7 +34,7 @@ export class PaeyentEventArray {
 
   replaceLast(id: number, type: number, dataIdx: number): number {
     if (this.top === 0) {
-      console.warn("PaeyentEventQueue.replaceLast(): empty, dropping event");
+      console.warn("PaeyentEventBuffer.replaceLast(): empty, dropping event");
       return -1;
     }
 
