@@ -67,7 +67,7 @@ canvas {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
+  /*background: rgba(0, 0, 0, 0.5);*/
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,6 +76,8 @@ canvas {
 
 .modal-content {
   background: white;
+  border: 1px solid black;
+
   padding: 2rem;
   width: 75%;
   height: 75%;
