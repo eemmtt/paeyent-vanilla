@@ -21,6 +21,7 @@ export interface GraphicsModel {
   fg_texture_view: GPUTextureView;
   an_texture_view: GPUTextureView;
   clear_color: Color;
+  maxRenderPasses: number;
 
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;

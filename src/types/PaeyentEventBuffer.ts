@@ -1,19 +1,19 @@
 export class PaeyentEventBuffer {
   id: Uint8Array; // 0: PointerEventType | 1: UIEventType
   type: Uint8Array; // UIEventLookup value | PointerEventLookup value
-  dataIdx: Int8Array; // data buffer idx
+  dataIdx: Int16Array; // data buffer idx
 
   top: number;
   capacity: number;
 
-  constructor(capacity: number = 127) {
-    if (capacity > 127) {
-      console.warn("PaeyentEventBuffer capacity max value is 127");
-      capacity = 127;
+  constructor(capacity: number = 256) {
+    if (capacity > 32767 || capacity < -32768) {
+      console.warn("PaeyentEventBuffer capacity is int16");
+      capacity = 256;
     }
     this.id = new Uint8Array(capacity);
     this.type = new Uint8Array(capacity);
-    this.dataIdx = new Int8Array(capacity);
+    this.dataIdx = new Int16Array(capacity);
     this.top = 0;
     this.capacity = capacity;
   }

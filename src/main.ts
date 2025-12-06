@@ -4,32 +4,53 @@ import { type Model, model_init, type SessionSettings } from "./types/Model";
 import { UIUpdaters } from "./ui/events";
 
 function mainloop(model: Model) {
-  // loop over each PaeyentEvent and call their handler
-  for (let i = 0; i < model.eventBuffer.top; i++) {
-    if (model.eventBuffer.id[i] === 0 /* PointerEvent */) {
-      ToolUpdaters[model.curr_tool * ToolStride + model.eventBuffer.type[i]](
-        model,
-        model.eventBuffer.dataIdx[i]
-      );
-    } else if (model.eventBuffer.id[i] === 1 /* UIEvent */) {
-      UIUpdaters[model.eventBuffer.type[i]](model);
-    } else {
-      console.warn(
-        `mainloop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
-      );
+  setTimeout(() => {
+    // time frame
+    const frameAvg = model.frameTimes.push(
+      performance.now() - model.frameStart
+    );
+    model.frameStart = performance.now();
+    //console.log("Frame time:", model.frameTimes.getAverage());
+
+    // time update
+    model.updateStart = performance.now();
+
+    // loop over each PaeyentEvent and call their handler
+    for (let i = 0; i < model.eventBuffer.top; i++) {
+      if (model.eventBuffer.id[i] === 0 /* PointerEvent */) {
+        ToolUpdaters[model.curr_tool * ToolStride + model.eventBuffer.type[i]](
+          model,
+          model.eventBuffer.dataIdx[i]
+        );
+      } else if (model.eventBuffer.id[i] === 1 /* UIEvent */) {
+        UIUpdaters[model.eventBuffer.type[i]](model);
+      } else {
+        console.warn(
+          `mainloop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
+        );
+      }
     }
-  }
-  model.eventBuffer.clear();
-  model.eventDataBuffer.clear();
+    model.eventBuffer.clear();
+    model.eventDataBuffer.clear();
 
-  // render each item in the renderPassBuffer
-  if (model.renderPassBuffer.top > 0) {
-    model.render(model);
-    model.renderPassBuffer.clear();
-    model.renderPassDataBuffer.clear();
-  }
+    // calc update time
+    const updateAvg = model.updateTimes.push(
+      performance.now() - model.updateStart
+    );
+    //console.log("Update time:", model.updateTimes.getAverage());
 
-  requestAnimationFrame(() => mainloop(model));
+    // render each item in the renderPassBuffer
+    if (model.renderPassBuffer.top > 0) {
+      model.render(model);
+      model.renderPassBuffer.clear();
+      model.renderPassDataBuffer.clear();
+    }
+
+    // box update + render time to 10ms
+    model.timeOut =
+      frameAvg - updateAvg - 10 > 0 ? frameAvg - updateAvg - 10 : 0;
+    requestAnimationFrame(() => mainloop(model));
+  }, model.timeOut);
 }
 
 //TODO: prevent page refresh

@@ -41,6 +41,7 @@ import {
   onModalShareButton,
   onModalAboutSection,
 } from "../EventHandlers";
+import { RollingAverageBuffer } from "./RollingAverageBuffer";
 
 // TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 export interface Model {
@@ -59,6 +60,7 @@ export interface Model {
   fg_texture_view: GPUTextureView;
   an_texture_view: GPUTextureView;
   clear_color: Color;
+  maxRenderPasses: number;
 
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;
@@ -164,6 +166,15 @@ export interface Model {
   onModalSaveButton: PaeyentEventHandler;
   onModalShareButton: PaeyentEventHandler;
   onModalAboutSection: PaeyentEventHandler;
+
+  /* performance */
+  frameStart: number;
+  updateStart: number;
+  renderStart: number;
+  frameTimes: RollingAverageBuffer;
+  updateTimes: RollingAverageBuffer;
+  renderTimes: RollingAverageBuffer;
+  timeOut: number;
 }
 
 export type SessionState = "in-session" | "end-session";
@@ -183,18 +194,18 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   const rand_g = Math.random();
   const rand_b = Math.random();
 
+  const graphics_model = await graphics_build();
   const drawing_model = {
     curr_tool: 0,
     is_drawing: false,
     pts: new Float32Array(32),
     num_pts: 0,
     color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
-    eventBuffer: new PaeyentEventBuffer(127),
-    eventDataBuffer: new PaeyentEventDataBuffer(127),
+    eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
+    eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);
-  const graphics_model = await graphics_build();
 
   const handlers = {
     onPointerDown,
@@ -228,6 +239,16 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     onModalAboutSection,
   };
 
+  const perf = {
+    frameStart: performance.now(),
+    updateStart: 0,
+    renderStart: 0,
+    frameTimes: new RollingAverageBuffer(100),
+    updateTimes: new RollingAverageBuffer(100),
+    renderTimes: new RollingAverageBuffer(100),
+    timeOut: 0,
+  };
+
   return {
     ...graphics_model,
     ...drawing_model,
@@ -235,5 +256,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     session_state: "in-session",
     ...settings,
     ...handlers,
+    ...perf,
   };
 }

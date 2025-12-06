@@ -10,10 +10,10 @@ export class PaeyentEventDataBuffer {
   top: number;
   capacity: number;
 
-  constructor(capacity: number = 127) {
-    if (capacity > 127) {
-      console.warn("PaeyentEventDataBuffer max capacity is 127");
-      capacity = 127;
+  constructor(capacity: number = 256) {
+    if (capacity > 32767 || capacity < -32768) {
+      console.warn("PaeyentEventDataBuffer capacity is int16");
+      capacity = 256;
     }
     this.x = new Float32Array(capacity);
     this.y = new Float32Array(capacity);

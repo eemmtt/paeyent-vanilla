@@ -1,17 +1,17 @@
 export class RenderPassBuffer {
   type: Uint8Array; // RenderPassLookup value
-  dataIdx: Int8Array; // RenderPassDataBuffer idx
+  dataIdx: Int16Array; // RenderPassDataBuffer idx
 
   top: number;
   capacity: number;
 
-  constructor(capacity: number = 127) {
-    if (capacity > 127) {
-      console.warn("RenderPassBuffer max capacity is 127");
-      capacity = 127;
+  constructor(capacity: number = 256) {
+    if (capacity > 32767 || capacity < -32768) {
+      console.warn("RenderPassBuffer capacity is int16");
+      capacity = 256;
     }
     this.type = new Uint8Array(capacity);
-    this.dataIdx = new Int8Array(capacity);
+    this.dataIdx = new Int16Array(capacity);
     this.top = 0;
     this.capacity = capacity;
   }

@@ -68,11 +68,18 @@ export async function wgpu_init(
   );
 
   const poly_uniform = new PolyUniform(device, canvas);
-  const [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
-    create_poly_resources(device, format, poly_uniform);
 
-  const renderPassBuffer = new RenderPassBuffer(127);
-  const renderPassDataBuffer = new RenderPassDataBuffer(127);
+  // Calculate max render passes based on device limits
+  const maxUniformBufferSize = device.limits.maxUniformBufferBindingSize;
+  const maxRenderPasses = Math.floor(
+    maxUniformBufferSize / poly_uniform.aligned_size
+  );
+
+  const [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
+    create_poly_resources(device, format, poly_uniform, maxRenderPasses);
+
+  const renderPassBuffer = new RenderPassBuffer(maxRenderPasses);
+  const renderPassDataBuffer = new RenderPassDataBuffer(maxRenderPasses);
 
   console.log("Intialized WebGPU Context");
   return {
@@ -89,6 +96,7 @@ export async function wgpu_init(
     fg_texture_view,
     an_texture_view,
     clear_color,
+    maxRenderPasses,
 
     poly_uniform,
     poly_buffer,
@@ -340,10 +348,9 @@ function create_composite_resources(
 function create_poly_resources(
   device: GPUDevice,
   format: GPUTextureFormat,
-  poly_uniform: PolyUniform
+  poly_uniform: PolyUniform,
+  max_queued_renderpasses: number
 ): [GPUBuffer, GPUBindGroup, GPURenderPipeline, GPURenderPipeline] {
-  const max_queued_renderpasses = 16;
-
   let poly_buffer = device.createBuffer({
     size: poly_uniform.aligned_size * max_queued_renderpasses,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
