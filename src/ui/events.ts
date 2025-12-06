@@ -1,6 +1,6 @@
 import type { Model } from "../types/Model";
 import type { Point } from "../types/Point";
-import { ToolHandlers, ToolStride } from "../types/Tool";
+import { ToolUpdaters, ToolStride } from "../types/Tool";
 
 export type UIEventType =
   | "button-start-session"
@@ -29,7 +29,7 @@ export type UIEventType =
   | "input-slider-blue"
   | "window-resize";
 
-export const UIEventLookup = {
+export const UIUpdaterLookup = {
   "button-start-session": 0,
   "button-end-session": 1,
   "button-modal-close": 2,
@@ -57,35 +57,35 @@ export const UIEventLookup = {
   "window-resize": 24,
 } as const;
 
-export const UIEventHandlers = [
-  onButtonStartSession,
-  onButtonEndSession,
-  onButtonModalClose,
-  onButtonModalContainer,
-  onButtonAbout,
-  onButtonSave,
-  onButtonShare,
-  onButtonLine,
-  onButtonBrush,
-  onButtonFan,
-  onButtonMenu,
-  onRadioConstraintTypeNone,
-  onRadioConstraintTypeTime,
-  onRadioConstraintTypeActions,
-  onRadioColorpickerTypeRgb,
-  onRadioColorpickerTypeHsv,
-  onRadioScratchYes,
-  onRadioScratchNo,
-  onInputTimeMinutes,
-  onInputTimeSeconds,
-  onInputActionsCount,
-  onSliderRed,
-  onSliderGreen,
-  onSliderBlue,
-  onResize,
+export const UIUpdaters = [
+  updateButtonStartSession,
+  updateButtonEndSession,
+  updateButtonModalClose,
+  updateButtonModalContainer,
+  updateButtonAbout,
+  updateButtonSave,
+  updateButtonShare,
+  updateButtonLine,
+  updateButtonBrush,
+  updateButtonFan,
+  updateButtonMenu,
+  updateRadioConstraintTypeNone,
+  updateRadioConstraintTypeTime,
+  updateRadioConstraintTypeActions,
+  updateRadioColorpickerTypeRgb,
+  updateRadioColorpickerTypeHsv,
+  updateRadioScratchYes,
+  updateRadioScratchNo,
+  updateInputTimeMinutes,
+  updateInputTimeSeconds,
+  updateInputActionsCount,
+  updateSliderRed,
+  updateSliderGreen,
+  updateSliderBlue,
+  updateResize,
 ];
 
-function onButtonStartSession(model: Model) {
+function updateButtonStartSession(model: Model) {
   // TODO: Actually start new session with these options
   model.session_state = "in-session";
 
@@ -104,12 +104,12 @@ function onButtonStartSession(model: Model) {
   //update modal body to inSession contents
   modalBodyToInSession(model);
   model.renderPassBuffer.push(
-    3, // RenderPassLookup["clear-all"] === 0
+    3, // RenderPassLookup["clear-all"] === 3
     -1 // no data
   );
 }
 
-function onButtonEndSession(model: Model) {
+function updateButtonEndSession(model: Model) {
   model.session_state = "end-session";
 
   //TODO: update to model.menu_container.replaceChildren()
@@ -125,15 +125,15 @@ function onButtonEndSession(model: Model) {
   modalBodyToEndSession(model);
 }
 
-function onButtonModalClose(model: Model) {
+function updateButtonModalClose(model: Model) {
   modal_close(model);
 }
 
-function onButtonModalContainer(model: Model) {
+function updateButtonModalContainer(model: Model) {
   modal_close(model);
 }
 
-function onButtonAbout(model: Model) {
+function updateButtonAbout(model: Model) {
   if (model.modal_about_section.open === true) {
     model.modal_about_section.open = false;
   } else if (model.modal_about_section.open === false) {
@@ -145,48 +145,48 @@ function onButtonAbout(model: Model) {
   }
 }
 
-function onButtonSave(model: Model) {
+function updateButtonSave(model: Model) {
   alert("TODO: Implement save to file");
 }
 
-function onButtonShare(model: Model) {
+function updateButtonShare(model: Model) {
   alert("TODO: Implement share");
 }
 
-function onButtonLine(model: Model) {
+function updateButtonLine(model: Model) {
   if (model.curr_tool === 0) {
     //0 is line tool idx
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 0; //0 is line tool idx
   console.log("Line tool selected");
 }
 
-function onButtonBrush(model: Model) {
+function updateButtonBrush(model: Model) {
   if (model.curr_tool === 2) {
     //2 is brush tool idx
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 2; //2 is brush tool idx
   console.log("Brush tool selected");
 }
 
-function onButtonFan(model: Model) {
+function updateButtonFan(model: Model) {
   if (model.curr_tool === 1) {
     //1 is fan tool idx
     return;
   }
 
-  ToolHandlers[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.curr_tool = 1; //1 is fan tool idx
   console.log("Fan tool selected");
 }
 
-function onButtonMenu(model: Model) {
+function updateButtonMenu(model: Model) {
   if (model.is_modal_open) {
     modal_close(model);
   } else {
@@ -194,7 +194,7 @@ function onButtonMenu(model: Model) {
   }
 }
 
-function onRadioConstraintTypeNone(model: Model) {
+function updateRadioConstraintTypeNone(model: Model) {
   model.radio_constraint_type_none.checked = true;
   model.radio_constraint_type_time.checked = false;
   model.radio_constraint_type_actions.checked = false;
@@ -202,7 +202,7 @@ function onRadioConstraintTypeNone(model: Model) {
   model.constraint_type_actions_inputgroup.style.display = "none";
   model.constraint_type_time_inputgroup.style.display = "none";
 }
-function onRadioConstraintTypeTime(model: Model) {
+function updateRadioConstraintTypeTime(model: Model) {
   model.radio_constraint_type_none.checked = false;
   model.radio_constraint_type_time.checked = true;
   model.radio_constraint_type_actions.checked = false;
@@ -210,7 +210,7 @@ function onRadioConstraintTypeTime(model: Model) {
   model.constraint_type_actions_inputgroup.style.display = "none";
   model.constraint_type_time_inputgroup.style.display = "flex";
 }
-function onRadioConstraintTypeActions(model: Model) {
+function updateRadioConstraintTypeActions(model: Model) {
   model.radio_constraint_type_none.checked = false;
   model.radio_constraint_type_time.checked = false;
   model.radio_constraint_type_actions.checked = true;
@@ -218,52 +218,52 @@ function onRadioConstraintTypeActions(model: Model) {
   model.constraint_type_actions_inputgroup.style.display = "flex";
   model.constraint_type_time_inputgroup.style.display = "none";
 }
-function onRadioColorpickerTypeRgb(model: Model) {
+function updateRadioColorpickerTypeRgb(model: Model) {
   model.radio_colorpicker_type_rgb.checked = true;
   model.radio_colorpicker_type_hsv.checked = false;
   model.color_picker_type = "rgb";
 }
-function onRadioColorpickerTypeHsv(model: Model) {
+function updateRadioColorpickerTypeHsv(model: Model) {
   model.radio_colorpicker_type_rgb.checked = false;
   model.radio_colorpicker_type_hsv.checked = true;
   model.color_picker_type = "hsv";
 }
-function onRadioScratchYes(model: Model) {
+function updateRadioScratchYes(model: Model) {
   model.radio_scratch_yes.checked = true;
   model.radio_scratch_no.checked = false;
   model.scratch_area = true;
 }
-function onRadioScratchNo(model: Model) {
+function updateRadioScratchNo(model: Model) {
   model.radio_scratch_yes.checked = false;
   model.radio_scratch_no.checked = true;
   model.scratch_area = false;
 }
 
-function onInputTimeMinutes(model: Model) {
+function updateInputTimeMinutes(model: Model) {
   model.constraint_time_minutes =
     model.constraint_type_time_minutes.valueAsNumber;
 }
-function onInputTimeSeconds(model: Model) {
+function updateInputTimeSeconds(model: Model) {
   model.constraint_time_seconds =
     model.constraint_type_time_seconds.valueAsNumber;
 }
-function onInputActionsCount(model: Model) {
+function updateInputActionsCount(model: Model) {
   model.constraint_actions = model.constraint_type_actions_count.valueAsNumber;
 }
 
-function onSliderRed(model: Model) {
+function updateSliderRed(model: Model) {
   model.color[0] = model.slider_r.valueAsNumber;
   model.color_preview.style.background = `rgba(${model.color[0] * 255}, ${
     model.color[1] * 255
   }, ${model.color[2] * 255}, 1.0)`;
 }
-function onSliderGreen(model: Model) {
+function updateSliderGreen(model: Model) {
   model.color[1] = model.slider_g.valueAsNumber;
   model.color_preview.style.background = `rgba(${model.color[0] * 255}, ${
     model.color[1] * 255
   }, ${model.color[2] * 255}, 1.0)`;
 }
-function onSliderBlue(model: Model) {
+function updateSliderBlue(model: Model) {
   model.color[2] = model.slider_b.valueAsNumber;
   model.color_preview.style.background = `rgba(${model.color[0] * 255}, ${
     model.color[1] * 255
@@ -271,7 +271,7 @@ function onSliderBlue(model: Model) {
 }
 
 //TODO: investigate resize event scaling ui weird?
-function onResize(model: Model) {
+function updateResize(model: Model) {
   const dpr = window.devicePixelRatio || 1;
   model.dpr = dpr * 1; //TODO: "factor" out
 

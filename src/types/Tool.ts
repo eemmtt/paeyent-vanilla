@@ -11,7 +11,7 @@ export const ToolLookup = {
   //brush: 2,
 } as const;
 
-export const ToolHandlers = [
+export const ToolUpdaters = [
   line_pointerdown,
   line_pointerup,
   line_pointermove,
