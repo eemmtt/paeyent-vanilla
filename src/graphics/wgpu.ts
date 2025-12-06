@@ -593,8 +593,8 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   );
   model.poly_uniform.set_rgba(
     model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
     model.renderPassDataBuffer.green[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
     1
   );
   model.device.queue.writeBuffer(
@@ -622,6 +622,7 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   renderpass.draw(6, 1);
   renderpass.end();
 }
+
 function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
     console.warn(`onLineBg: invalid dataIdx ${dataIdx}`);
@@ -640,8 +641,8 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   );
   model.poly_uniform.set_rgba(
     model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
     model.renderPassDataBuffer.green[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
     1
   );
   model.device.queue.writeBuffer(
@@ -682,6 +683,7 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   renderpass.draw(6, 1);
   renderpass.end();
 }
+
 function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
     console.warn(`onFanFg: invalid dataIdx ${dataIdx}`);
@@ -705,8 +707,8 @@ function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   );
   model.poly_uniform.set_rgba(
     model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
     model.renderPassDataBuffer.green[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
     1
   );
   model.device.queue.writeBuffer(
@@ -734,6 +736,7 @@ function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   renderpass.draw(3, 1);
   renderpass.end();
 }
+
 function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
     console.warn(`onFanBg: invalid dataIdx ${dataIdx}`);
@@ -757,8 +760,8 @@ function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   );
   model.poly_uniform.set_rgba(
     model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
     model.renderPassDataBuffer.green[dataIdx],
+    model.renderPassDataBuffer.blue[dataIdx],
     1
   );
   model.device.queue.writeBuffer(
