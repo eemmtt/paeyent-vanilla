@@ -1,5 +1,4 @@
 import { wgpu_init } from "./wgpu";
-import { resize_canvas } from "../ui/events";
 import type { Model } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
 import type { RenderPassBuffer } from "../types/RenderPassBuffer";
@@ -65,7 +64,8 @@ export async function graphics_build(): Promise<GraphicsModel> {
     throw Error("build_graphics_model: Failed to query canvas");
   }
   const dpr = window.devicePixelRatio || 1;
-  resize_canvas(dpr, canvas);
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
 
   const graphics_ctxs: [GraphicsCtxInitializer, () => boolean][] = [
     [wgpu_init, () => "gpu" in navigator],

@@ -1,5 +1,4 @@
 import type { Model } from "../types/Model";
-import type { Point } from "../types/Point";
 import { ToolUpdaters, ToolStride } from "../types/Tool";
 
 export type UIEventType =
@@ -275,18 +274,12 @@ function updateResize(model: Model) {
   const dpr = window.devicePixelRatio || 1;
   model.dpr = dpr * 1; //TODO: "factor" out
 
-  const [new_width, new_height] = resize_canvas(dpr * 1, model.canvas);
-  model.poly_uniform.update_dims(new_width, new_height);
+  model.canvas.width = model.canvas.clientWidth * dpr;
+  model.canvas.height = model.canvas.clientHeight * dpr;
+  model.poly_uniform.update_dims(model.canvas.width, model.canvas.height);
 }
 
 /* helpers */
-
-export function resize_canvas(dpr: number, canvas: HTMLCanvasElement): Point {
-  canvas.width = canvas.clientWidth * dpr;
-  canvas.height = canvas.clientHeight * dpr;
-
-  return [canvas.width, canvas.height];
-}
 
 function modal_close(model: Model) {
   if (!model.is_modal_open) return;
