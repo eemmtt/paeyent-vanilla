@@ -1,10 +1,38 @@
 import "./style.css";
 import { ToolUpdaters, ToolStride } from "./types/Tool";
 import { type Model, model_init, type SessionSettings } from "./types/Model";
-import { UIUpdaters } from "./ui/events";
+import { UIUpdaterLookup, UIUpdaters } from "./ui/events";
+import {
+  onBrushButton,
+  onConstraintActionsCount,
+  onConstraintTimeMinutes,
+  onConstraintTimeSeconds,
+  onFanButton,
+  onLineButton,
+  onMenuButton,
+  onModalAboutSection,
+  onModalCloseButton,
+  onModalContainer,
+  onModalEndSessionButton,
+  onModalSaveButton,
+  onModalShareButton,
+  onModalStartSessionButton,
+  onRadioColorpickerTypeHsv,
+  onRadioColorpickerTypeRgb,
+  onRadioConstraintTypeActions,
+  onRadioConstraintTypeNone,
+  onRadioConstraintTypeTime,
+  onRadioScratchNo,
+  onRadioScratchYes,
+  onSliderBlue,
+  onSliderGreen,
+  onSliderRed,
+  onWindowResize,
+} from "./EventHandlers";
+import type { PointerType } from "./types/PaeyentEvent";
 
-function mainloop(model: Model) {
-  setTimeout(() => {
+function mainLoop(model: Model) {
+  model.timeoutId = setTimeout(() => {
     // time frame
     const frameAvg = model.frameTimes.push(
       performance.now() - model.frameStart
@@ -26,7 +54,7 @@ function mainloop(model: Model) {
         UIUpdaters[model.eventBuffer.type[i]](model);
       } else {
         console.warn(
-          `mainloop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
+          `mainLoop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
         );
       }
     }
@@ -46,10 +74,11 @@ function mainloop(model: Model) {
       model.renderPassDataBuffer.clear();
     }
 
-    // box update + render time to 10ms
+    // box update time + render time to 10ms
+    // will probably get rid of this...
     model.timeOut =
       frameAvg - updateAvg - 10 > 0 ? frameAvg - updateAvg - 10 : 0;
-    requestAnimationFrame(() => mainloop(model));
+    model.rafId = requestAnimationFrame(() => mainLoop(model));
   }, model.timeOut);
 }
 
@@ -67,94 +96,199 @@ async function main() {
   const model = await model_init(options);
 
   /* register event listeners */
-  window.addEventListener("resize", (e) => model.onWindowResize(e, model));
-  window.addEventListener("keydown", (e) => model.onKeyDown(e, model));
-  model.canvas.addEventListener("pointerdown", (e) =>
-    model.onPointerDown(e, model)
-  );
-  model.canvas.addEventListener("pointermove", (e) =>
-    model.onPointerMove(e, model)
-  );
-  model.canvas.addEventListener("pointerup", (e) =>
-    model.onPointerUp(e, model)
-  );
+
+  window.addEventListener("resize", (e) => onWindowResize(e, model));
+
+  // adding a timeout to mainLoop complicated matters
+  // and added the requirement of cleaning up the loop state
+  // when navigating to and from the window
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      // cancel pending loops
+      if (model.timeoutId !== null) {
+        clearTimeout(model.timeoutId);
+        model.timeoutId = null;
+      }
+      if (model.rafId !== null) {
+        cancelAnimationFrame(model.rafId);
+        model.rafId = null;
+      }
+    } else if (document.visibilityState === "visible") {
+      // reset frame timing
+      model.frameStart = performance.now();
+      model.updateStart = performance.now();
+      model.timeOut = 0;
+
+      mainLoop(model);
+    }
+  });
+
+  model.onKeyDown = (event: KeyboardEvent) => {
+    if (!event.repeat) {
+      //console.log("key pressed: ", event.key);
+      if (event.key == "m") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["button-menu"],
+          -1 // No data
+        );
+      } else if (event.key == "f") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["button-fan"],
+          -1 // No data
+        );
+      } else if (event.key == "l") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["button-line"],
+          -1 // No data
+        );
+      } else if (event.key == "b") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["button-brush"],
+          -1 // No data
+        );
+      }
+    }
+  };
+
+  model.onPointerDown = (event: Event) => {
+    model.eventBuffer.push(
+      0, // PointerEvent
+      0, // PointerEventLookup["pointerdown"] === 0
+      model.eventDataBuffer.push(
+        (event as PointerEvent).x,
+        (event as PointerEvent).y,
+        (event as PointerEvent).pressure,
+        (event as PointerEvent).pointerType as PointerType
+      )
+    );
+  };
+  model.onPointerMove = (event: Event) => {
+    // overwrite repeated pointermoves
+    if (
+      model.eventBuffer.top > 0 && // array is not empty
+      model.eventBuffer.id[model.eventBuffer.top - 1] === 0 && // last item is a PointerEvent
+      model.eventBuffer.type[model.eventBuffer.top - 1] === 2 // last item is a "pointermove" event
+    ) {
+      model.eventBuffer.replaceLast(
+        0, // PointerEvent
+        2, // PointerEventLookup["pointermove"] === 2
+        model.eventDataBuffer.replaceLast(
+          (event as PointerEvent).x,
+          (event as PointerEvent).y,
+          (event as PointerEvent).pressure,
+          (event as PointerEvent).pointerType as PointerType
+        )
+      );
+    }
+
+    model.eventBuffer.push(
+      0, // PointerEvent
+      2, // PointerEventLookup["pointermove"] === 2
+      model.eventDataBuffer.push(
+        (event as PointerEvent).x,
+        (event as PointerEvent).y,
+        (event as PointerEvent).pressure,
+        (event as PointerEvent).pointerType as PointerType
+      )
+    );
+  };
+
+  model.onPointerUp = (event: Event) => {
+    model.eventBuffer.push(
+      0, // PointerEvent
+      1, // PointerEventLookup["pointerup"] === 1
+      model.eventDataBuffer.push(
+        (event as PointerEvent).x,
+        (event as PointerEvent).y,
+        (event as PointerEvent).pressure,
+        (event as PointerEvent).pointerType as PointerType
+      )
+    );
+  };
+
+  window.addEventListener("keydown", model.onKeyDown);
+  model.canvas.addEventListener("pointerdown", model.onPointerDown);
+  //model.canvas.addEventListener("pointermove", model.onPointerMove);
+  //model.canvas.addEventListener("pointerup", model.onPointerUp);
 
   /* color picker events */
-  model.slider_r.addEventListener("input", (e) => model.onSliderRed(e, model));
-  model.slider_g.addEventListener("input", (e) =>
-    model.onSliderGreen(e, model)
-  );
-  model.slider_b.addEventListener("input", (e) => model.onSliderBlue(e, model));
+  model.slider_r.addEventListener("input", (e) => onSliderRed(e, model));
+  model.slider_g.addEventListener("input", (e) => onSliderGreen(e, model));
+  model.slider_b.addEventListener("input", (e) => onSliderBlue(e, model));
 
   /* button-container events */
   model.menu_button.addEventListener("pointerdown", (e) =>
-    model.onMenuButton(e, model)
+    onMenuButton(e, model)
   );
   model.brush_button.addEventListener("pointerdown", (e) =>
-    model.onBrushButton(e, model)
+    onBrushButton(e, model)
   );
   model.fan_button.addEventListener("pointerdown", (e) =>
-    model.onFanButton(e, model)
+    onFanButton(e, model)
   );
   model.line_button.addEventListener("pointerdown", (e) =>
-    model.onLineButton(e, model)
+    onLineButton(e, model)
   );
 
   /* modal events */
   model.modal_container.addEventListener("pointerdown", (e) =>
-    model.onModalContainer(e, model)
+    onModalContainer(e, model)
   );
   model.modal_close_button.addEventListener("pointerdown", (e) =>
-    model.onModalCloseButton(e, model)
+    onModalCloseButton(e, model)
   );
   model.radio_constraint_type_none.addEventListener("change", (e) =>
-    model.onRadioConstraintTypeNone(e, model)
+    onRadioConstraintTypeNone(e, model)
   );
   model.radio_constraint_type_time.addEventListener("change", (e) =>
-    model.onRadioConstraintTypeTime(e, model)
+    onRadioConstraintTypeTime(e, model)
   );
   model.constraint_type_time_minutes.addEventListener("change", (e) =>
-    model.onConstraintTimeMinutes(e, model)
+    onConstraintTimeMinutes(e, model)
   );
   model.constraint_type_time_seconds.addEventListener("change", (e) =>
-    model.onConstraintTimeSeconds(e, model)
+    onConstraintTimeSeconds(e, model)
   );
   model.radio_constraint_type_actions.addEventListener("change", (e) =>
-    model.onRadioConstraintTypeActions(e, model)
+    onRadioConstraintTypeActions(e, model)
   );
   model.constraint_type_actions_count.addEventListener("change", (e) =>
-    model.onConstraintActionsCount(e, model)
+    onConstraintActionsCount(e, model)
   );
   model.radio_colorpicker_type_rgb.addEventListener("change", (e) =>
-    model.onRadioColorpickerTypeRgb(e, model)
+    onRadioColorpickerTypeRgb(e, model)
   );
   model.radio_colorpicker_type_hsv.addEventListener("change", (e) =>
-    model.onRadioColorpickerTypeHsv(e, model)
+    onRadioColorpickerTypeHsv(e, model)
   );
   model.radio_scratch_yes.addEventListener("change", (e) =>
-    model.onRadioScratchYes(e, model)
+    onRadioScratchYes(e, model)
   );
   model.radio_scratch_no.addEventListener("change", (e) =>
-    model.onRadioScratchNo(e, model)
+    onRadioScratchNo(e, model)
   );
   model.modal_start_session_button.addEventListener("pointerdown", (e) =>
-    model.onModalStartSessionButton(e, model)
+    onModalStartSessionButton(e, model)
   );
   model.modal_end_session_button.addEventListener("pointerdown", (e) =>
-    model.onModalEndSessionButton(e, model)
+    onModalEndSessionButton(e, model)
   );
   model.modal_save_button.addEventListener("pointerdown", (e) =>
-    model.onModalSaveButton(e, model)
+    onModalSaveButton(e, model)
   );
   model.modal_share_button.addEventListener("pointerdown", (e) =>
-    model.onModalShareButton(e, model)
+    onModalShareButton(e, model)
   );
   model.modal_about_section.addEventListener("pointerdown", (e) =>
-    model.onModalAboutSection(e, model)
+    onModalAboutSection(e, model)
   );
 
   /* start update + render loop */
-  mainloop(model);
+  mainLoop(model);
 }
 
 main();

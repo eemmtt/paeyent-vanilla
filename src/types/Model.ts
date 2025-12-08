@@ -9,41 +9,11 @@ import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
 import { PaeyentEventDataBuffer } from "./PaeyentEventDataBuffer";
 import type { RenderPassBuffer } from "./RenderPassBuffer";
 import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
-import type { PaeyentEventHandler } from "../EventHandlers";
-import {
-  onPointerDown,
-  onPointerMove,
-  onPointerUp,
-  onKeyDown,
-  onWindowResize,
-  onSliderRed,
-  onSliderGreen,
-  onSliderBlue,
-  onMenuButton,
-  onBrushButton,
-  onFanButton,
-  onLineButton,
-  onModalContainer,
-  onModalCloseButton,
-  onRadioConstraintTypeNone,
-  onRadioConstraintTypeTime,
-  onConstraintTimeMinutes,
-  onConstraintTimeSeconds,
-  onRadioConstraintTypeActions,
-  onConstraintActionsCount,
-  onRadioColorpickerTypeRgb,
-  onRadioColorpickerTypeHsv,
-  onRadioScratchYes,
-  onRadioScratchNo,
-  onModalStartSessionButton,
-  onModalEndSessionButton,
-  onModalSaveButton,
-  onModalShareButton,
-  onModalAboutSection,
-} from "../EventHandlers";
+import { voidEventHandler } from "../EventHandlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
 
-// TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
+//TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
+//      ...but i prefer to see everything in one chunk at this point
 export interface Model {
   /* graphics state */
   canvas: HTMLCanvasElement;
@@ -136,36 +106,15 @@ export interface Model {
   color_picker_type: "rgb" | "hsv";
   scratch_area: boolean;
 
-  /* handlers */
-  onPointerDown: PaeyentEventHandler;
-  onPointerMove: PaeyentEventHandler;
-  onPointerUp: PaeyentEventHandler;
-  onKeyDown: (event: KeyboardEvent, model: Model) => void;
-  onWindowResize: PaeyentEventHandler;
-  onSliderRed: PaeyentEventHandler;
-  onSliderGreen: PaeyentEventHandler;
-  onSliderBlue: PaeyentEventHandler;
-  onMenuButton: PaeyentEventHandler;
-  onBrushButton: PaeyentEventHandler;
-  onFanButton: PaeyentEventHandler;
-  onLineButton: PaeyentEventHandler;
-  onModalContainer: PaeyentEventHandler;
-  onModalCloseButton: PaeyentEventHandler;
-  onRadioConstraintTypeNone: PaeyentEventHandler;
-  onRadioConstraintTypeTime: PaeyentEventHandler;
-  onConstraintTimeMinutes: PaeyentEventHandler;
-  onConstraintTimeSeconds: PaeyentEventHandler;
-  onRadioConstraintTypeActions: PaeyentEventHandler;
-  onConstraintActionsCount: PaeyentEventHandler;
-  onRadioColorpickerTypeRgb: PaeyentEventHandler;
-  onRadioColorpickerTypeHsv: PaeyentEventHandler;
-  onRadioScratchYes: PaeyentEventHandler;
-  onRadioScratchNo: PaeyentEventHandler;
-  onModalStartSessionButton: PaeyentEventHandler;
-  onModalEndSessionButton: PaeyentEventHandler;
-  onModalSaveButton: PaeyentEventHandler;
-  onModalShareButton: PaeyentEventHandler;
-  onModalAboutSection: PaeyentEventHandler;
+  /* handlers that are set/unset */
+  handleOnce: { once: boolean };
+  onPointerDown: (event: Event) => void;
+  onPointerMove: (event: Event) => void;
+  onPointerUp: (event: Event) => void;
+  onKeyDown: (event: KeyboardEvent) => void;
+  //onSliderRed: (event: Event) => void;
+  //onSliderGreen: (event: Event) => void;
+  //onSliderBlue: (event: Event) => void;
 
   /* performance */
   frameStart: number;
@@ -175,6 +124,8 @@ export interface Model {
   updateTimes: RollingAverageBuffer;
   renderTimes: RollingAverageBuffer;
   timeOut: number;
+  timeoutId: number | null;
+  rafId: number | null;
 }
 
 export type SessionState = "in-session" | "end-session";
@@ -207,36 +158,17 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);
 
+  // these handlers get initialized in main()
   const handlers = {
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    onKeyDown,
-    onWindowResize,
-    onSliderRed,
-    onSliderGreen,
-    onSliderBlue,
-    onMenuButton,
-    onBrushButton,
-    onFanButton,
-    onLineButton,
-    onModalContainer,
-    onModalCloseButton,
-    onRadioConstraintTypeNone,
-    onRadioConstraintTypeTime,
-    onConstraintTimeMinutes,
-    onConstraintTimeSeconds,
-    onRadioConstraintTypeActions,
-    onConstraintActionsCount,
-    onRadioColorpickerTypeRgb,
-    onRadioColorpickerTypeHsv,
-    onRadioScratchYes,
-    onRadioScratchNo,
-    onModalStartSessionButton,
-    onModalEndSessionButton,
-    onModalSaveButton,
-    onModalShareButton,
-    onModalAboutSection,
+    handleOnce: { once: true },
+    onPointerDown: voidEventHandler,
+    onPointerMove: voidEventHandler,
+    onPointerUp: voidEventHandler,
+    onKeyDown: voidEventHandler,
+    onWindowResize: voidEventHandler,
+    // onSliderRed: voidEventHandler,
+    // onSliderGreen: voidEventHandler,
+    // onSliderBlue: voidEventHandler,
   };
 
   const perf = {
@@ -247,6 +179,8 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     updateTimes: new RollingAverageBuffer(100),
     renderTimes: new RollingAverageBuffer(100),
     timeOut: 0,
+    timeoutId: null,
+    rafId: null,
   };
 
   return {

@@ -2,63 +2,13 @@ import type { Model } from "./types/Model";
 import type { PointerType } from "./types/PaeyentEvent";
 import { UIUpdaterLookup } from "./ui/events";
 
-export type PaeyentEventHandler = (event: Event, model: Model) => void;
+export type EventHandler = (event: Event) => void;
+
+export function voidEventHandler(_event: Event): void {}
 
 /* pointer input handlers */
-export function onPointerDown(event: Event, model: Model) {
-  model.eventBuffer.push(
-    0, // PointerEvent
-    0, // PointerEventLookup["pointerdown"] === 0
-    model.eventDataBuffer.push(
-      (event as PointerEvent).x,
-      (event as PointerEvent).y,
-      (event as PointerEvent).pressure,
-      (event as PointerEvent).pointerType as PointerType
-    )
-  );
-}
-export function onPointerMove(event: Event, model: Model) {
-  // overwrite repeated pointermoves
-  if (
-    model.eventBuffer.top > 0 && // array is not empty
-    model.eventBuffer.id[model.eventBuffer.top - 1] === 1 && // last item is a PointerEvent
-    model.eventBuffer.type[model.eventBuffer.top - 1] === 2 // last item is a "pointermove" event
-  ) {
-    model.eventBuffer.replaceLast(
-      0, // PointerEvent
-      2, // PointerEventLookup["pointermove"] === 2
-      model.eventDataBuffer.replaceLast(
-        (event as PointerEvent).x,
-        (event as PointerEvent).y,
-        (event as PointerEvent).pressure,
-        (event as PointerEvent).pointerType as PointerType
-      )
-    );
-  }
+// implemented on main() with Model in closure...
 
-  model.eventBuffer.push(
-    0, // PointerEvent
-    2, // PointerEventLookup["pointermove"] === 2
-    model.eventDataBuffer.push(
-      (event as PointerEvent).x,
-      (event as PointerEvent).y,
-      (event as PointerEvent).pressure,
-      (event as PointerEvent).pointerType as PointerType
-    )
-  );
-}
-export function onPointerUp(event: Event, model: Model) {
-  model.eventBuffer.push(
-    0, // PointerEvent
-    1, // PointerEventLookup["pointerup"] === 1
-    model.eventDataBuffer.push(
-      (event as PointerEvent).x,
-      (event as PointerEvent).y,
-      (event as PointerEvent).pressure,
-      (event as PointerEvent).pointerType as PointerType
-    )
-  );
-}
 export function onKeyDown(event: KeyboardEvent, model: Model) {
   if (!event.repeat) {
     //console.log("key pressed: ", event.key);
@@ -91,7 +41,7 @@ export function onKeyDown(event: KeyboardEvent, model: Model) {
 }
 
 /* UI event handlers */
-export function onWindowResize(event: Event, model: Model) {
+export function onWindowResize(_event: Event, model: Model) {
   // debounce consecutive resize calls, nasty style
   if (
     model.eventBuffer.top > 0 && // array is not empty

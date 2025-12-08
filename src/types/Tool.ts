@@ -1,6 +1,6 @@
 import { type Model } from "./Model";
-import { PT_STRIDE } from "./Point";
 
+const PT_STRIDE = 2;
 //TODO: implement brush
 export type ToolType = "line" | "fan" /*| "brush"*/;
 
@@ -47,7 +47,7 @@ function line_pointerdown(model: Model, dataIdx: number) {
     );
   }
 }
-function line_pointerup(model: Model, dataIdx: number) {}
+function line_pointerup(_model: Model, _dataIdx: number) {}
 function line_pointermove(model: Model, dataIdx: number) {
   if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
     console.warn(`line_pointermove: invalid dataIdx ${dataIdx}`);
@@ -67,6 +67,14 @@ function line_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
   model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
+
+  model.canvas.addEventListener("pointermove", model.onPointerMove);
+  model.canvas.addEventListener(
+    "pointerup",
+    model.onPointerUp,
+    model.handleOnce
+  );
+
   return;
 }
 function line_stop(model: Model, x: number, y: number) {
@@ -92,6 +100,9 @@ function line_stop(model: Model, x: number, y: number) {
     (y * model.dpr - model.pts[0 + 1]) ** 2;
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
+
+    model.canvas.removeEventListener("pointermove", model.onPointerMove);
+    model.canvas.removeEventListener("pointerup", model.onPointerUp);
   } else {
     line_start(model, x, y);
   }
@@ -116,13 +127,16 @@ function line_hover(model: Model, x: number, y: number) {
   );
 }
 
-function line_cancel(model: Model, dataIdx: number) {
+function line_cancel(model: Model, _dataIdx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
   model.renderPassBuffer.push(
     0, // RenderPassLookup["clear-fg"] === 0
     -1 // no data
   );
+
+  model.canvas.removeEventListener("pointermove", model.onPointerMove);
+  model.canvas.removeEventListener("pointerup", model.onPointerUp);
 }
 
 /* POLY FAN */
@@ -147,7 +161,9 @@ function fan_pointerdown(model: Model, dataIdx: number) {
     );
   }
 }
-function fan_pointerup(model: Model, dataIdx: number) {}
+
+function fan_pointerup(_model: Model, _dataIdx: number) {}
+
 function fan_pointermove(model: Model, dataIdx: number) {
   if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
     console.warn(`fan_pointermove: invalid dataIdx ${dataIdx}`);
@@ -167,6 +183,13 @@ function fan_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
   model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
   model.num_pts = 1;
+
+  model.canvas.addEventListener("pointermove", model.onPointerMove);
+  model.canvas.addEventListener(
+    "pointerup",
+    model.onPointerUp,
+    model.handleOnce
+  );
   return;
 }
 function fan_stop(model: Model, x: number, y: number) {
@@ -218,6 +241,9 @@ function fan_stop(model: Model, x: number, y: number) {
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
     model.num_pts = 0;
+
+    model.canvas.removeEventListener("pointermove", model.onPointerMove);
+    model.canvas.removeEventListener("pointerup", model.onPointerUp);
   }
   return;
 }
@@ -256,9 +282,13 @@ function fan_hover(model: Model, x: number, y: number) {
     );
   }
 }
-function fan_cancel(model: Model, dataIdx: number) {
+function fan_cancel(model: Model, _dataIdx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
+
+  model.canvas.removeEventListener("pointermove", model.onPointerMove);
+  model.canvas.removeEventListener("pointerup", model.onPointerUp);
+
   model.renderPassBuffer.push(
     0, // RenderPassLookup["clear-fg"] === 0
     -1 // no data
