@@ -39,4 +39,10 @@ export class RollingAverageBuffer {
   getAverage(): number {
     return this.sum / this.size;
   }
+
+  clear() {
+    this.sum = 0;
+    this.top = 0;
+    this.size = 0;
+  }
 }
