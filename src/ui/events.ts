@@ -26,7 +26,12 @@ export type UIEventType =
   | "input-slider-red"
   | "input-slider-green"
   | "input-slider-blue"
-  | "window-resize";
+  | "window-resize"
+  | "home-view"
+  | "zoom-in"
+  | "zoom-out"
+  | "pan-x"
+  | "pan-y";
 
 export const UIUpdaterLookup = {
   "button-start-session": 0,
@@ -53,7 +58,11 @@ export const UIUpdaterLookup = {
   "input-slider-red": 21,
   "input-slider-green": 22,
   "input-slider-blue": 23,
-  "window-resize": 24,
+  "home-view": 24,
+  "zoom-in": 25,
+  "zoom-out": 26,
+  "pan-x": 27,
+  "pan-y": 28,
 } as const;
 
 export const UIUpdaters = [
@@ -81,7 +90,11 @@ export const UIUpdaters = [
   updateSliderRed,
   updateSliderGreen,
   updateSliderBlue,
-  updateResize,
+  updateHomeView,
+  updateZoomIn,
+  updateZoomOut,
+  updatePanX,
+  updatePanY,
 ];
 
 function updateButtonStartSession(model: Model) {
@@ -269,14 +282,53 @@ function updateSliderBlue(model: Model) {
   }, ${model.color[2] * 255}, 1.0)`;
 }
 
-//TODO: investigate resize event scaling ui weird?
-function updateResize(model: Model) {
-  const dpr = window.devicePixelRatio || 1;
-  model.dpr = dpr * 1; //TODO: "factor" out
+function updateHomeView(model: Model) {
+  model.zoom = 1.0;
+  model.texture_offset_x = 0;
+  model.texture_offset_y = 0;
+  model.composite_uniform.set_texture_offset(0, 0);
+  model.composite_uniform.set_zoom(1.0);
 
-  model.canvas.width = model.canvas.clientWidth * dpr;
-  model.canvas.height = model.canvas.clientHeight * dpr;
-  model.poly_uniform.update_dims(model.canvas.width, model.canvas.height);
+  model.renderPassBuffer.push(
+    0, // clear fg
+    -1 // no data
+  );
+}
+
+function updateZoomIn(model: Model) {
+  model.zoom -= 0.1;
+  model.composite_uniform.addZoom(-0.1);
+
+  model.renderPassBuffer.push(
+    0, // clear fg
+    -1 // no data
+  );
+}
+function updateZoomOut(model: Model) {
+  model.zoom += 0.1;
+  model.composite_uniform.addZoom(0.1);
+  model.renderPassBuffer.push(
+    0, // clear fg
+    -1 // no data
+  );
+}
+
+function updatePanX(model: Model) {
+  model.texture_offset_x += 20;
+  model.composite_uniform.addOffsetX(20 * model.dpr);
+  model.renderPassBuffer.push(
+    0, // clear fg
+    -1 // no data
+  );
+}
+
+function updatePanY(model: Model) {
+  model.texture_offset_y += 20;
+  model.composite_uniform.addOffsetY(20 * model.dpr);
+  model.renderPassBuffer.push(
+    0, // clear fg
+    -1 // no data
+  );
 }
 
 /* helpers */

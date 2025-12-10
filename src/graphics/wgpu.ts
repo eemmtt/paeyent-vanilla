@@ -7,13 +7,17 @@ import { PolyUniform } from "../types/PolyUniform";
 import type { Color, GraphicsModel } from "./Graphics";
 import { RenderPassBuffer } from "../types/RenderPassBuffer";
 import { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
+import { CompositeUniform } from "../types/CompositeUniform";
 
 type FillStyle = "transparent" | "white";
 
 export async function wgpu_init(
-  dpr: number,
   canvas: HTMLCanvasElement
 ): Promise<GraphicsModel> {
+  if (!window) {
+    throw Error("wgpu_init: Window not found");
+  }
+
   if (!navigator.gpu) {
     throw Error("WebGPU not supported");
   }
@@ -27,6 +31,17 @@ export async function wgpu_init(
   if (!device) {
     throw Error("Failed to get WebGPU device");
   }
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(
+    1,
+    Math.min(rect.width * dpr, device.limits.maxTextureDimension2D)
+  );
+  canvas.height = Math.max(
+    1,
+    Math.min(rect.height * dpr, device.limits.maxTextureDimension2D)
+  );
 
   const context = canvas.getContext("webgpu");
   if (!context) {
@@ -59,15 +74,27 @@ export async function wgpu_init(
 
   const clear_color: Color = [1, 1, 1, 1];
 
-  const [composite_pipeline, composite_bindgroup] = create_composite_resources(
+  const composite_uniform = new CompositeUniform(device, canvas);
+
+  const [
+    composite_pipeline,
+    composite_bindgroup,
+    composite_uniform_buffer,
+    composite_uniform_bindgroup,
+  ] = create_composite_resources(
     device,
     format,
     bg_texture_view,
     fg_texture_view,
-    an_texture_view
+    an_texture_view,
+    composite_uniform
   );
 
-  const poly_uniform = new PolyUniform(device, canvas);
+  const poly_uniform = new PolyUniform(
+    device,
+    canvas.clientWidth,
+    canvas.clientHeight
+  );
 
   // Calculate max render passes based on device limits
   const maxUniformBufferSize = device.limits.maxUniformBufferBindingSize;
@@ -89,6 +116,11 @@ export async function wgpu_init(
     surface: context,
     is_surface_configured: false,
     dpr,
+    clientWidth: rect.width,
+    clientHeight: rect.height,
+    deviceWidth: canvas.width,
+    deviceHeight: canvas.height,
+
     bg_texture,
     fg_texture,
     an_texture,
@@ -101,6 +133,10 @@ export async function wgpu_init(
     poly_uniform,
     poly_buffer,
     poly_bindgroup,
+    composite_uniform,
+    composite_uniform_buffer,
+    composite_uniform_bindgroup,
+
     line_pipeline,
     fan_pipeline,
     composite_pipeline,
@@ -164,6 +200,12 @@ function wgpu_render(model: Model) {
 
   // always finish with composite pass
   {
+    model.device.queue.writeBuffer(
+      model.composite_uniform_buffer,
+      0,
+      model.composite_uniform.data.buffer
+    );
+
     const pass = encoder.beginRenderPass({
       label: "Composite Render Pass",
       colorAttachments: [
@@ -177,6 +219,7 @@ function wgpu_render(model: Model) {
     });
     pass.setPipeline(model.composite_pipeline);
     pass.setBindGroup(0, model.composite_bindgroup);
+    pass.setBindGroup(1, model.composite_uniform_bindgroup);
     pass.draw(4, 1);
     pass.end();
   }
@@ -251,14 +294,15 @@ function create_composite_resources(
   format: GPUTextureFormat,
   bg_texture_view: GPUTextureView,
   fg_texture_view: GPUTextureView,
-  an_texture_view: GPUTextureView
-): [GPURenderPipeline, GPUBindGroup] {
-  let composite_shader = device.createShaderModule({
+  an_texture_view: GPUTextureView,
+  composite_uniform: CompositeUniform
+): [GPURenderPipeline, GPUBindGroup, GPUBuffer, GPUBindGroup] {
+  const composite_shader = device.createShaderModule({
     label: "texture compositor",
     code: compositeShaderCode,
   });
 
-  let composite_bindgroup_layout = device.createBindGroupLayout({
+  const composite_bindgroup_layout = device.createBindGroupLayout({
     entries: [
       {
         binding: 0,
@@ -297,11 +341,27 @@ function create_composite_resources(
     ],
   });
 
-  let composite_pipeline_layout = device.createPipelineLayout({
-    bindGroupLayouts: [composite_bindgroup_layout],
+  const composite_uniform_bindgroup_layout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: "uniform",
+          hasDynamicOffset: false,
+        },
+      },
+    ],
   });
 
-  let composite_pipeline = device.createRenderPipeline({
+  const composite_pipeline_layout = device.createPipelineLayout({
+    bindGroupLayouts: [
+      composite_bindgroup_layout,
+      composite_uniform_bindgroup_layout,
+    ],
+  });
+
+  const composite_pipeline = device.createRenderPipeline({
     layout: composite_pipeline_layout,
     vertex: {
       module: composite_shader,
@@ -324,7 +384,7 @@ function create_composite_resources(
     },
   });
 
-  let sampler = device.createSampler({
+  const sampler = device.createSampler({
     addressModeU: "clamp-to-edge",
     addressModeV: "clamp-to-edge",
     addressModeW: "clamp-to-edge",
@@ -332,7 +392,7 @@ function create_composite_resources(
     minFilter: "linear",
   });
 
-  let composite_bindgroup = device.createBindGroup({
+  const composite_bindgroup = device.createBindGroup({
     layout: composite_bindgroup_layout,
     entries: [
       { binding: 0, resource: bg_texture_view },
@@ -342,7 +402,31 @@ function create_composite_resources(
     ],
   });
 
-  return [composite_pipeline, composite_bindgroup];
+  const composite_uniform_buffer = device.createBuffer({
+    size: composite_uniform.aligned_size,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  const composite_uniform_bindgroup = device.createBindGroup({
+    layout: composite_uniform_bindgroup_layout,
+    entries: [
+      {
+        binding: 0,
+        resource: {
+          buffer: composite_uniform_buffer,
+          offset: 0,
+          size: composite_uniform.aligned_size,
+        },
+      },
+    ],
+  });
+
+  return [
+    composite_pipeline,
+    composite_bindgroup,
+    composite_uniform_buffer,
+    composite_uniform_bindgroup,
+  ];
 }
 
 function create_poly_resources(
@@ -588,22 +672,17 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     return;
   }
 
-  model.poly_uniform.set_pos(
-    0,
-    model.renderPassDataBuffer.x0[dataIdx],
-    model.renderPassDataBuffer.y0[dataIdx]
-  );
-  model.poly_uniform.set_pos(
-    1,
-    model.renderPassDataBuffer.x1[dataIdx],
-    model.renderPassDataBuffer.y1[dataIdx]
-  );
-  model.poly_uniform.set_rgba(
-    model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.green[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
-    1
-  );
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const x1 = model.renderPassDataBuffer.x1[dataIdx];
+  const y1 = model.renderPassDataBuffer.y1[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_pos(1, x1, y1);
+  model.poly_uniform.set_rgba(r, g, b, 1);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
@@ -636,22 +715,17 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     return;
   }
 
-  model.poly_uniform.set_pos(
-    0,
-    model.renderPassDataBuffer.x0[dataIdx],
-    model.renderPassDataBuffer.y0[dataIdx]
-  );
-  model.poly_uniform.set_pos(
-    1,
-    model.renderPassDataBuffer.x1[dataIdx],
-    model.renderPassDataBuffer.y1[dataIdx]
-  );
-  model.poly_uniform.set_rgba(
-    model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.green[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
-    1
-  );
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const x1 = model.renderPassDataBuffer.x1[dataIdx];
+  const y1 = model.renderPassDataBuffer.y1[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_pos(1, x1, y1);
+  model.poly_uniform.set_rgba(r, g, b, 1);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,

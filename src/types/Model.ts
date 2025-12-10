@@ -11,6 +11,7 @@ import type { RenderPassBuffer } from "./RenderPassBuffer";
 import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
 import { voidEventHandler } from "../EventHandlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
+import type { CompositeUniform } from "./CompositeUniform";
 
 //TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 //      ...but i prefer to see everything in one chunk at this point
@@ -22,6 +23,10 @@ export interface Model {
   surface: GPUCanvasContext;
   is_surface_configured: Boolean;
   dpr: number;
+  clientWidth: number;
+  clientHeight: number;
+  deviceWidth: number;
+  deviceHeight: number;
 
   bg_texture: GPUTexture;
   fg_texture: GPUTexture;
@@ -35,6 +40,10 @@ export interface Model {
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;
   poly_bindgroup: GPUBindGroup;
+
+  composite_uniform: CompositeUniform;
+  composite_uniform_buffer: GPUBuffer;
+  composite_uniform_bindgroup: GPUBindGroup;
   composite_bindgroup: GPUBindGroup;
 
   line_pipeline: GPURenderPipeline;
@@ -54,6 +63,9 @@ export interface Model {
   eventBuffer: PaeyentEventBuffer;
   eventDataBuffer: PaeyentEventDataBuffer;
   pointerEventVoid: PointerEvent;
+  zoom: number;
+  texture_offset_x: number; //in css px
+  texture_offset_y: number; //in css px
 
   /* menu state */
   menu_container: Element;
@@ -155,6 +167,11 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
     eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
+    zoom: graphics_model.composite_uniform.data[
+      graphics_model.composite_uniform.offset_zoom
+    ],
+    texture_offset_x: 0,
+    texture_offset_y: 0,
   };
   const menu_model = menu_build(settings, session_state, drawing_model.color);
 

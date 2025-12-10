@@ -1,5 +1,4 @@
 import type { Model } from "./types/Model";
-import type { PointerType } from "./types/PaeyentEvent";
 import { UIUpdaterLookup } from "./ui/events";
 
 export type EventHandler = (event: Event) => void;
@@ -9,53 +8,7 @@ export function voidEventHandler(_event: Event): void {}
 /* pointer input handlers */
 // implemented on main() with Model in closure...
 
-export function onKeyDown(event: KeyboardEvent, model: Model) {
-  if (!event.repeat) {
-    //console.log("key pressed: ", event.key);
-    if (event.key == "m") {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-menu"],
-        -1 // No data
-      );
-    } else if (event.key == "f") {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-fan"],
-        -1 // No data
-      );
-    } else if (event.key == "l") {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-line"],
-        -1 // No data
-      );
-    } else if (event.key == "b") {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-brush"],
-        -1 // No data
-      );
-    }
-  }
-}
-
 /* UI event handlers */
-export function onWindowResize(_event: Event, model: Model) {
-  // debounce consecutive resize calls, nasty style
-  if (
-    model.eventBuffer.top > 0 && // array is not empty
-    model.eventBuffer.id[model.eventBuffer.top - 1] === 1 && // last item is a UIEvent
-    model.eventBuffer.type[model.eventBuffer.top - 1] !==
-      UIUpdaterLookup["window-resize"] // last item is not a window-resize event
-  ) {
-    model.eventBuffer.push(
-      1, // UIEvent
-      UIUpdaterLookup["window-resize"],
-      -1 // No data
-    );
-  }
-}
 
 export function onSliderRed(event: Event, model: Model) {
   if (event.target === model.slider_r) {

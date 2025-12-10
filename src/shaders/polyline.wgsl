@@ -23,7 +23,7 @@ struct VertexOutput {
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var output: VertexOutput;
 
-    // convert screen coordinates to NDC
+    // convert viewport css coordinates to NDC
     let current_ndc = vec2<f32>(
         (poly.pos_b.x / poly.canvas_width) * 2.0 - 1.0,
         1.0 - (poly.pos_b.y / poly.canvas_height) * 2.0

@@ -27,7 +27,6 @@ import {
   onSliderBlue,
   onSliderGreen,
   onSliderRed,
-  onWindowResize,
 } from "./EventHandlers";
 import type { PointerType } from "./types/PaeyentEvent";
 
@@ -97,7 +96,96 @@ async function main() {
 
   /* register event listeners */
 
-  window.addEventListener("resize", (e) => onWindowResize(e, model));
+  // handle window resize events
+  let resizeDebounceTimeout: number | null = null;
+  const RESIZE_DEBOUNCE_MS = 16;
+  const handleResize = (entries: ResizeObserverEntry[]) => {
+    for (const entry of entries) {
+      if (entry.target !== model.canvas) {
+        console.warn("ResizeObserver called on non model.canvas");
+        continue;
+      }
+
+      const clientWidth = entry.contentBoxSize[0].inlineSize;
+      const clientHeight = entry.contentBoxSize[0].blockSize;
+      const rawDeviceWidth =
+        entry.devicePixelContentBoxSize?.[0].inlineSize ||
+        clientWidth * devicePixelRatio;
+      const rawDeviceHeight =
+        entry.devicePixelContentBoxSize?.[0].blockSize ||
+        clientHeight * devicePixelRatio;
+
+      const clampedDeviceWidth = Math.max(
+        1,
+        Math.min(rawDeviceWidth, model.device.limits.maxTextureDimension2D)
+      );
+      const clampedDeviceHeight = Math.max(
+        1,
+        Math.min(rawDeviceHeight, model.device.limits.maxTextureDimension2D)
+      );
+
+      const clientResizeRatioX = clientWidth / model.clientWidth;
+      const clientResizeRatioY = clientHeight / model.clientHeight;
+      const textureOffsetX = model.texture_offset_x * clientResizeRatioX;
+      const textureOffsetY = model.texture_offset_y * clientResizeRatioY;
+
+      // update model.pts in progress
+      for (let i = 0; i < model.num_pts; i++) {
+        model.pts[i * 2] *= clientResizeRatioX;
+        model.pts[i * 2 + 1] *= clientResizeRatioY;
+      }
+
+      // update model's recorded viewport client size and texture offset
+      model.clientWidth = clientWidth;
+      model.clientHeight = clientHeight;
+      model.texture_offset_x = textureOffsetX;
+      model.texture_offset_y = textureOffsetY;
+
+      // update viewport canvas resolution to new dimensions (csspx * devicepx/csspx = devicepx)
+      model.canvas.width = clampedDeviceWidth;
+      model.canvas.height = clampedDeviceHeight;
+      model.deviceWidth = clampedDeviceWidth;
+      model.deviceHeight = clampedDeviceHeight;
+      model.dpr = devicePixelRatio;
+
+      // reconfigure surface
+      const oldConfig = model.surface.getConfiguration();
+      if (oldConfig !== null) {
+        model.surface.configure(oldConfig);
+      } else {
+        throw Error("Retrieved null surface config during resize");
+      }
+
+      // update uniforms
+      model.poly_uniform.updateDimensions(model);
+      model.composite_uniform.updateDimensionsAndTransforms(model);
+
+      // render updated viewport
+      model.renderPassBuffer.push(
+        0, // clear fg
+        -1 // no data
+      );
+    }
+  };
+
+  const observer = new ResizeObserver((entries) => {
+    if (resizeDebounceTimeout !== null) {
+      clearTimeout(resizeDebounceTimeout);
+    }
+
+    resizeDebounceTimeout = setTimeout(() => {
+      handleResize(entries);
+      resizeDebounceTimeout = null;
+    }, RESIZE_DEBOUNCE_MS);
+  });
+
+  try {
+    observer.observe(model.canvas, { box: "device-pixel-content-box" });
+  } catch {
+    observer.observe(model.canvas, { box: "content-box" });
+  }
+
+  //window.addEventListener("resize", (e) => onWindowResize(e, model));
 
   // adding a timeout to mainLoop complicated matters
   // and added the requirement of cleaning up the loop state
@@ -150,23 +238,64 @@ async function main() {
           UIUpdaterLookup["button-brush"],
           -1 // No data
         );
+      } else if (event.key == "z") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["zoom-in"],
+          -1 // No data
+        );
+      } else if (event.key == "x") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["zoom-out"],
+          -1 // No data
+        );
+      } else if (event.key == "h") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["home-view"],
+          -1 // No data
+        );
+      } else if (event.key == "ArrowRight") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["pan-x"],
+          -1 // No data
+        );
+      } else if (event.key == "ArrowDown") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["pan-y"],
+          -1 // No data
+        );
+      } else {
+        console.log(`onKeyDown: ${event.key}`);
       }
     }
   };
 
   model.onPointerDown = (event: Event) => {
+    const rect = model.canvas.getBoundingClientRect();
+    const viewportX = (event as PointerEvent).clientX - rect.left;
+    const viewportY = (event as PointerEvent).clientY - rect.top;
+
     model.eventBuffer.push(
       0, // PointerEvent
       0, // PointerEventLookup["pointerdown"] === 0
       model.eventDataBuffer.push(
-        (event as PointerEvent).x,
-        (event as PointerEvent).y,
+        viewportX,
+        viewportY,
         (event as PointerEvent).pressure,
         (event as PointerEvent).pointerType as PointerType
       )
     );
   };
+
   model.onPointerMove = (event: Event) => {
+    const rect = model.canvas.getBoundingClientRect();
+    const viewportX = (event as PointerEvent).clientX - rect.left;
+    const viewportY = (event as PointerEvent).clientY - rect.top;
+
     // overwrite repeated pointermoves
     if (
       model.eventBuffer.top > 0 && // array is not empty
@@ -177,8 +306,8 @@ async function main() {
         0, // PointerEvent
         2, // PointerEventLookup["pointermove"] === 2
         model.eventDataBuffer.replaceLast(
-          (event as PointerEvent).x,
-          (event as PointerEvent).y,
+          viewportX,
+          viewportY,
           (event as PointerEvent).pressure,
           (event as PointerEvent).pointerType as PointerType
         )
@@ -189,8 +318,8 @@ async function main() {
       0, // PointerEvent
       2, // PointerEventLookup["pointermove"] === 2
       model.eventDataBuffer.push(
-        (event as PointerEvent).x,
-        (event as PointerEvent).y,
+        viewportX,
+        viewportY,
         (event as PointerEvent).pressure,
         (event as PointerEvent).pointerType as PointerType
       )
@@ -198,12 +327,16 @@ async function main() {
   };
 
   model.onPointerUp = (event: Event) => {
+    const rect = model.canvas.getBoundingClientRect();
+    const viewportX = (event as PointerEvent).clientX - rect.left;
+    const viewportY = (event as PointerEvent).clientY - rect.top;
+
     model.eventBuffer.push(
       0, // PointerEvent
       1, // PointerEventLookup["pointerup"] === 1
       model.eventDataBuffer.push(
-        (event as PointerEvent).x,
-        (event as PointerEvent).y,
+        viewportX,
+        viewportY,
         (event as PointerEvent).pressure,
         (event as PointerEvent).pointerType as PointerType
       )
@@ -212,8 +345,6 @@ async function main() {
 
   window.addEventListener("keydown", model.onKeyDown);
   model.canvas.addEventListener("pointerdown", model.onPointerDown);
-  //model.canvas.addEventListener("pointermove", model.onPointerMove);
-  //model.canvas.addEventListener("pointerup", model.onPointerUp);
 
   /* color picker events */
   model.slider_r.addEventListener("input", (e) => onSliderRed(e, model));

@@ -33,18 +33,15 @@ function line_pointerdown(model: Model, dataIdx: number) {
     return;
   }
 
+  const viewportX = model.eventDataBuffer.x[dataIdx];
+  const viewportY = model.eventDataBuffer.y[dataIdx];
+  const textureX = (viewportX - model.texture_offset_x) / model.zoom;
+  const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+
   if (!model.is_drawing) {
-    line_start(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    line_start(model, textureX, textureY);
   } else {
-    line_stop(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    line_stop(model, textureX, textureY);
   }
 }
 function line_pointerup(_model: Model, _dataIdx: number) {}
@@ -55,17 +52,19 @@ function line_pointermove(model: Model, dataIdx: number) {
   }
 
   if (model.is_drawing) {
-    line_hover(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    const viewportX = model.eventDataBuffer.x[dataIdx];
+    const viewportY = model.eventDataBuffer.y[dataIdx];
+    const textureX = (viewportX - model.texture_offset_x) / model.zoom;
+    const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+
+    line_hover(model, textureX, textureY);
   }
 }
 
 function line_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
-  model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
+  model.pts[0 * PT_STRIDE + 0] = x;
+  model.pts[0 * PT_STRIDE + 1] = y;
   model.num_pts = 1;
 
   model.canvas.addEventListener("pointermove", model.onPointerMove);
@@ -78,14 +77,17 @@ function line_start(model: Model, x: number, y: number) {
   return;
 }
 function line_stop(model: Model, x: number, y: number) {
+  const startX = model.pts[0 * PT_STRIDE];
+  const startY = model.pts[0 * PT_STRIDE + 1];
+
   // draw line to background
   model.renderPassBuffer.push(
     5, //RenderPassLookup["line-bg"] === 5
     model.renderPassDataBuffer.push(
-      model.pts[0 * PT_STRIDE],
-      model.pts[0 * PT_STRIDE + 1],
-      x * model.dpr,
-      y * model.dpr,
+      startX,
+      startY,
+      x,
+      y,
       -1,
       -1,
       model.color[0],
@@ -96,8 +98,7 @@ function line_stop(model: Model, x: number, y: number) {
 
   const radius_squared = 15 * 15;
   const dist_squared =
-    (x * model.dpr - model.pts[0]) ** 2 +
-    (y * model.dpr - model.pts[0 + 1]) ** 2;
+    (x - model.pts[0 + 0]) ** 2 + (y - model.pts[0 + 1]) ** 2;
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
 
@@ -116,8 +117,8 @@ function line_hover(model: Model, x: number, y: number) {
     model.renderPassDataBuffer.push(
       model.pts[0 * PT_STRIDE],
       model.pts[0 * PT_STRIDE + 1],
-      x * model.dpr,
-      y * model.dpr,
+      x,
+      y,
       -1,
       -1,
       model.color[0],
@@ -147,18 +148,15 @@ function fan_pointerdown(model: Model, dataIdx: number) {
     return;
   }
 
+  const viewportX = model.eventDataBuffer.x[dataIdx];
+  const viewportY = model.eventDataBuffer.y[dataIdx];
+  const textureX = (viewportX - model.texture_offset_x) / model.zoom;
+  const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+
   if (!model.is_drawing) {
-    fan_start(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    fan_start(model, textureX, textureY);
   } else {
-    fan_stop(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    fan_stop(model, textureX, textureY);
   }
 }
 
@@ -171,17 +169,20 @@ function fan_pointermove(model: Model, dataIdx: number) {
   }
 
   if (model.is_drawing) {
-    fan_hover(
-      model,
-      model.eventDataBuffer.x[dataIdx],
-      model.eventDataBuffer.y[dataIdx]
-    );
+    const viewportX = model.eventDataBuffer.x[dataIdx];
+    const viewportY = model.eventDataBuffer.y[dataIdx];
+    const textureX = (viewportX - model.texture_offset_x) / model.zoom;
+    const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+
+    fan_hover(model, textureX, textureY);
   }
 }
 
 function fan_start(model: Model, x: number, y: number) {
   model.is_drawing = true;
-  model.pts.set([x * model.dpr, y * model.dpr], 0 * PT_STRIDE);
+  model.pts[0 * PT_STRIDE + 0] = x;
+  model.pts[0 * PT_STRIDE + 1] = y;
+
   model.num_pts = 1;
 
   model.canvas.addEventListener("pointermove", model.onPointerMove);
@@ -194,14 +195,14 @@ function fan_start(model: Model, x: number, y: number) {
 }
 function fan_stop(model: Model, x: number, y: number) {
   if (model.num_pts == 1) {
-    // draw line to background
+    // Convert viewport space to texture space and draw line to background
     model.renderPassBuffer.push(
       5, //RenderPassLookup["line-bg"] === 5
       model.renderPassDataBuffer.push(
         model.pts[0 * PT_STRIDE],
         model.pts[0 * PT_STRIDE + 1],
-        x * model.dpr,
-        y * model.dpr,
+        x,
+        y,
         -1,
         -1,
         model.color[0],
@@ -211,10 +212,11 @@ function fan_stop(model: Model, x: number, y: number) {
     );
 
     // add midpoint
-    model.pts.set([x * model.dpr, y * model.dpr], 1 * PT_STRIDE);
+    model.pts[1 * PT_STRIDE + 0] = x;
+    model.pts[1 * PT_STRIDE + 1] = y;
     model.num_pts = 2;
   } else if (model.num_pts == 2) {
-    // draw triangle to background
+    // Convert viewport space to texture space and draw triangle to background
     model.renderPassBuffer.push(
       7, //RenderPassLookup["fan-bg"] === 7
       model.renderPassDataBuffer.push(
@@ -222,8 +224,8 @@ function fan_stop(model: Model, x: number, y: number) {
         model.pts[0 * PT_STRIDE + 1],
         model.pts[1 * PT_STRIDE],
         model.pts[1 * PT_STRIDE + 1],
-        x * model.dpr,
-        y * model.dpr,
+        x,
+        y,
         model.color[0],
         model.color[1],
         model.color[2]
@@ -231,13 +233,13 @@ function fan_stop(model: Model, x: number, y: number) {
     );
 
     //update midpoint
-    model.pts.set([x * model.dpr, y * model.dpr], 1 * PT_STRIDE);
+    model.pts[1 * PT_STRIDE + 0] = x;
+    model.pts[1 * PT_STRIDE + 1] = y;
   }
 
   const radius_squared = 15 * 15;
   const dist_squared =
-    (x * model.dpr - model.pts[0]) ** 2 +
-    (y * model.dpr - model.pts[0 + 1]) ** 2;
+    (x - model.pts[0 + 0]) ** 2 + (y - model.pts[0 + 1]) ** 2;
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
     model.num_pts = 0;
@@ -249,14 +251,14 @@ function fan_stop(model: Model, x: number, y: number) {
 }
 function fan_hover(model: Model, x: number, y: number) {
   if (model.num_pts == 1) {
-    // draw line to foreground
+    // Convert viewport space to texture space and draw line to foreground
     model.renderPassBuffer.push(
       4, //RenderPassLookup["line-fg"] === 4
       model.renderPassDataBuffer.push(
         model.pts[0 * PT_STRIDE],
         model.pts[0 * PT_STRIDE + 1],
-        x * model.dpr,
-        y * model.dpr,
+        x,
+        y,
         -1,
         -1,
         model.color[0],
@@ -265,7 +267,7 @@ function fan_hover(model: Model, x: number, y: number) {
       )
     );
   } else if (model.num_pts == 2) {
-    // draw triangle to foreground
+    // Convert viewport space to texture space and draw triangle to foreground
     model.renderPassBuffer.push(
       6, //RenderPassLookup["fan-fg"] === 6
       model.renderPassDataBuffer.push(
@@ -273,8 +275,8 @@ function fan_hover(model: Model, x: number, y: number) {
         model.pts[0 * PT_STRIDE + 1],
         model.pts[1 * PT_STRIDE],
         model.pts[1 * PT_STRIDE + 1],
-        x * model.dpr,
-        y * model.dpr,
+        x,
+        y,
         model.color[0],
         model.color[1],
         model.color[2]

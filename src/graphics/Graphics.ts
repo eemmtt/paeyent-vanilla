@@ -3,6 +3,7 @@ import type { Model } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
 import type { RenderPassBuffer } from "../types/RenderPassBuffer";
 import type { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
+import type { CompositeUniform } from "../types/CompositeUniform";
 
 export interface GraphicsModel {
   /* rendering state */
@@ -12,6 +13,10 @@ export interface GraphicsModel {
   surface: GPUCanvasContext;
   is_surface_configured: Boolean;
   dpr: number;
+  clientWidth: number;
+  clientHeight: number;
+  deviceWidth: number;
+  deviceHeight: number;
 
   bg_texture: GPUTexture;
   fg_texture: GPUTexture;
@@ -25,6 +30,10 @@ export interface GraphicsModel {
   poly_uniform: PolyUniform;
   poly_buffer: GPUBuffer;
   poly_bindgroup: GPUBindGroup;
+
+  composite_uniform: CompositeUniform;
+  composite_uniform_buffer: GPUBuffer;
+  composite_uniform_bindgroup: GPUBindGroup;
   composite_bindgroup: GPUBindGroup;
 
   line_pipeline: GPURenderPipeline;
@@ -40,19 +49,16 @@ export type Color = [number, number, number, number];
 export type RenderFunction = (model: Model) => void;
 
 export type GraphicsCtxInitializer = (
-  dpr: number,
   canvas: HTMLCanvasElement
 ) => Promise<GraphicsModel>;
 
 export async function webgl2_init(
-  dpr: number,
   canvas: HTMLCanvasElement
 ): Promise<GraphicsModel> {
   throw Error("webgl2_init: not implemented");
 }
 
 export async function canvas2d_init(
-  dpr: number,
   canvas: HTMLCanvasElement
 ): Promise<GraphicsModel> {
   throw Error("canvas2d_init: not implemented");
@@ -63,9 +69,6 @@ export async function graphics_build(): Promise<GraphicsModel> {
   if (!canvas) {
     throw Error("build_graphics_model: Failed to query canvas");
   }
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = canvas.clientWidth * dpr;
-  canvas.height = canvas.clientHeight * dpr;
 
   const graphics_ctxs: [GraphicsCtxInitializer, () => boolean][] = [
     [wgpu_init, () => "gpu" in navigator],
@@ -76,7 +79,7 @@ export async function graphics_build(): Promise<GraphicsModel> {
   for (const [initializer, is_available] of graphics_ctxs) {
     if (!is_available()) continue;
     try {
-      return await initializer(dpr, canvas);
+      return await initializer(canvas);
     } catch (e) {
       console.warn(
         `build_graphics_model: Failed to initialize ${initializer.name}:`,
