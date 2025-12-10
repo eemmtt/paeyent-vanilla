@@ -147,6 +147,10 @@ async function main() {
       model.deviceWidth = clampedDeviceWidth;
       model.deviceHeight = clampedDeviceHeight;
       model.dpr = devicePixelRatio;
+      model.viewportToTextureX =
+        (devicePixelRatio * clientWidth) / model.bg_texture.width;
+      model.viewportToTextureY =
+        (devicePixelRatio * clientHeight) / model.bg_texture.height;
 
       // reconfigure surface
       const oldConfig = model.surface.getConfiguration();

@@ -33,10 +33,17 @@ function line_pointerdown(model: Model, dataIdx: number) {
     return;
   }
 
+  // viewport coordinate needs to be scaled to the aspect ratio
+  // of the texture
+
   const viewportX = model.eventDataBuffer.x[dataIdx];
   const viewportY = model.eventDataBuffer.y[dataIdx];
-  const textureX = (viewportX - model.texture_offset_x) / model.zoom;
-  const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+  const textureX =
+    ((viewportX - model.texture_offset_x) / model.zoom) *
+    model.viewportToTextureX;
+  const textureY =
+    ((viewportY - model.texture_offset_y) / model.zoom) *
+    model.viewportToTextureY;
 
   if (!model.is_drawing) {
     line_start(model, textureX, textureY);
@@ -54,8 +61,12 @@ function line_pointermove(model: Model, dataIdx: number) {
   if (model.is_drawing) {
     const viewportX = model.eventDataBuffer.x[dataIdx];
     const viewportY = model.eventDataBuffer.y[dataIdx];
-    const textureX = (viewportX - model.texture_offset_x) / model.zoom;
-    const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+    const textureX =
+      ((viewportX - model.texture_offset_x) / model.zoom) *
+      model.viewportToTextureX;
+    const textureY =
+      ((viewportY - model.texture_offset_y) / model.zoom) *
+      model.viewportToTextureY;
 
     line_hover(model, textureX, textureY);
   }
@@ -150,8 +161,12 @@ function fan_pointerdown(model: Model, dataIdx: number) {
 
   const viewportX = model.eventDataBuffer.x[dataIdx];
   const viewportY = model.eventDataBuffer.y[dataIdx];
-  const textureX = (viewportX - model.texture_offset_x) / model.zoom;
-  const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+  const textureX =
+    ((viewportX - model.texture_offset_x) / model.zoom) *
+    model.viewportToTextureX;
+  const textureY =
+    ((viewportY - model.texture_offset_y) / model.zoom) *
+    model.viewportToTextureY;
 
   if (!model.is_drawing) {
     fan_start(model, textureX, textureY);
@@ -171,8 +186,12 @@ function fan_pointermove(model: Model, dataIdx: number) {
   if (model.is_drawing) {
     const viewportX = model.eventDataBuffer.x[dataIdx];
     const viewportY = model.eventDataBuffer.y[dataIdx];
-    const textureX = (viewportX - model.texture_offset_x) / model.zoom;
-    const textureY = (viewportY - model.texture_offset_y) / model.zoom;
+    const textureX =
+      ((viewportX - model.texture_offset_x) / model.zoom) *
+      model.viewportToTextureX;
+    const textureY =
+      ((viewportY - model.texture_offset_y) / model.zoom) *
+      model.viewportToTextureY;
 
     fan_hover(model, textureX, textureY);
   }

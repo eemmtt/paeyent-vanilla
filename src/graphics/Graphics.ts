@@ -17,6 +17,8 @@ export interface GraphicsModel {
   clientHeight: number;
   deviceWidth: number;
   deviceHeight: number;
+  viewportToTextureX: number;
+  viewportToTextureY: number;
 
   bg_texture: GPUTexture;
   fg_texture: GPUTexture;
