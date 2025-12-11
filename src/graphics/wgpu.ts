@@ -34,6 +34,7 @@ export async function wgpu_init(
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
+
   canvas.width = Math.max(
     1,
     Math.min(rect.width * dpr, device.limits.maxTextureDimension2D)
@@ -120,8 +121,8 @@ export async function wgpu_init(
     clientHeight: rect.height,
     deviceWidth: canvas.width,
     deviceHeight: canvas.height,
-    viewportToTextureX: 1.0, // viewport and texture are init to same size
-    viewportToTextureY: 1.0, // viewport and texture are init to same size
+    viewportToTextureX: 1.0,
+    viewportToTextureY: 1.0,
 
     bg_texture,
     fg_texture,

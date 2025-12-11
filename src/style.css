@@ -15,24 +15,22 @@ body {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction:column;
+  flex-direction: column;
 }
 
 canvas {
   display: block;
   width: 100%;
-  height: 100%;
-  flex: 1 1 0;
-  min-height: 0;
+  height: calc(100vh - 7.5rem);
 }
 
 .menu-container {
-  flex: 0 0 auto;
   width: 100%;
-  order: 2;
-
+  height: 7.5rem;
+  /*
+  */
   display: flex;
-  flex-direction:column;
+  flex-direction: column;
 
   /* TODO: remove */
   border: 2px solid purple;
@@ -41,6 +39,8 @@ canvas {
 .scratch-container {
   width: 100%;
   flex: 1;
+  min-height: 2rem;
+  max-height: 3rem;
 
   /* TODO: remove */
   border: 1px solid rgb(100, 69, 209);
@@ -49,6 +49,8 @@ canvas {
 .color-picker-container {
   width: 100%;
   flex: 1;
+  min-height: 4rem;
+  max-height: 5rem;
 
   /* TODO: remove */
   border: 1px solid green;
@@ -57,8 +59,7 @@ canvas {
 .button-container {
   flex: 0 0 auto;
   width: 100%;
-  min-height: 1rem;
-  max-height: 2rem;
+  height: 1.5rem;
   order: 2;
 }
 

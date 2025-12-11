@@ -158,14 +158,15 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   const rand_r = Math.random();
   const rand_g = Math.random();
   const rand_b = Math.random();
-
+  const init_color = new Float32Array([rand_r, rand_g, rand_b, 1]);
+  const menu_model = menu_build(settings, session_state, init_color);
   const graphics_model = await graphics_build();
   const drawing_model = {
     curr_tool: 0,
     is_drawing: false,
     pts: new Float32Array(32),
     num_pts: 0,
-    color: new Float32Array([rand_r, rand_g, rand_b, 1]), //must init alpha to 1
+    color: init_color,
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
     eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
@@ -175,7 +176,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     texture_offset_x: 0,
     texture_offset_y: 0,
   };
-  const menu_model = menu_build(settings, session_state, drawing_model.color);
 
   // these handlers get initialized in main()
   const handlers = {
@@ -184,7 +184,7 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     onPointerMove: voidEventHandler,
     onPointerUp: voidEventHandler,
     onKeyDown: voidEventHandler,
-    onWindowResize: voidEventHandler,
+    // onWindowResize: voidEventHandler,
     // onSliderRed: voidEventHandler,
     // onSliderGreen: voidEventHandler,
     // onSliderBlue: voidEventHandler,

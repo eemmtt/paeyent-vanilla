@@ -92,6 +92,7 @@ async function main() {
     color_picker_type: "rgb",
     scratch_area: false,
   };
+
   const model = await model_init(options);
 
   /* register event listeners */
@@ -108,12 +109,18 @@ async function main() {
 
       const clientWidth = entry.contentBoxSize[0].inlineSize;
       const clientHeight = entry.contentBoxSize[0].blockSize;
-      const rawDeviceWidth =
-        entry.devicePixelContentBoxSize?.[0].inlineSize ||
-        clientWidth * devicePixelRatio;
-      const rawDeviceHeight =
-        entry.devicePixelContentBoxSize?.[0].blockSize ||
-        clientHeight * devicePixelRatio;
+
+      // for some reason devicePixelContentBoxSize is caculating a different
+      // value than clientWidth * devicePixelRatio on mobile vs desktop
+      // const rawDeviceWidth =
+      //   entry.devicePixelContentBoxSize?.[0].inlineSize ||
+      //   clientWidth * devicePixelRatio;
+      // const rawDeviceHeight =
+      //   entry.devicePixelContentBoxSize?.[0].blockSize ||
+      //   clientHeight * devicePixelRatio;
+
+      const rawDeviceWidth = clientWidth * devicePixelRatio;
+      const rawDeviceHeight = clientHeight * devicePixelRatio;
 
       const clampedDeviceWidth = Math.max(
         1,
@@ -142,11 +149,11 @@ async function main() {
       model.texture_offset_y = textureOffsetY;
 
       // update viewport canvas resolution to new dimensions (csspx * devicepx/csspx = devicepx)
+      model.dpr = devicePixelRatio;
       model.canvas.width = clampedDeviceWidth;
       model.canvas.height = clampedDeviceHeight;
       model.deviceWidth = clampedDeviceWidth;
       model.deviceHeight = clampedDeviceHeight;
-      model.dpr = devicePixelRatio;
       model.viewportToTextureX =
         (devicePixelRatio * clientWidth) / model.bg_texture.width;
       model.viewportToTextureY =
@@ -183,13 +190,11 @@ async function main() {
     }, RESIZE_DEBOUNCE_MS);
   });
 
-  try {
-    observer.observe(model.canvas, { box: "device-pixel-content-box" });
-  } catch {
-    observer.observe(model.canvas, { box: "content-box" });
-  }
+  // if we need device-pixel-content-box that responds to zoom on non-full width/height element
+  // observer.observe(model.canvas, { box: "device-pixel-content-box" });
+  observer.observe(model.canvas, { box: "content-box" });
 
-  //window.addEventListener("resize", (e) => onWindowResize(e, model));
+  //window.addEventListener("resize", (e) => {onWindowResize(e, model)});
 
   // adding a timeout to mainLoop complicated matters
   // and added the requirement of cleaning up the loop state
