@@ -299,17 +299,23 @@ function updateHomeView(model: Model) {
 }
 
 function updateZoomIn(model: Model) {
-  model.zoom -= 0.1;
-  model.composite_uniform.addZoom(-0.1);
+  model.zoom += 0.1;
+  model.composite_uniform.addZoom(0.1);
+  console.log(`updateZoomIn - zoom: ${model.zoom}`);
 
   model.renderPassBuffer.push(
     0, // clear fg
     -1 // no data
   );
 }
+
 function updateZoomOut(model: Model) {
-  model.zoom += 0.1;
-  model.composite_uniform.addZoom(0.1);
+  // float comparison, add 0.01 tolerance
+  const newZoom = model.zoom - 0.1 > 0.01 ? model.zoom - 0.1 : 0.1;
+  model.zoom = newZoom;
+  model.composite_uniform.set_zoom(newZoom);
+  console.log(`updateZoomOut - zoom: ${model.zoom}`);
+
   model.renderPassBuffer.push(
     0, // clear fg
     -1 // no data
