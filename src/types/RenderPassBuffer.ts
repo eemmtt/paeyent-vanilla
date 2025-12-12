@@ -6,8 +6,8 @@ export class RenderPassBuffer {
   capacity: number;
 
   constructor(capacity: number = 256) {
-    if (capacity > 32767 || capacity < -32768) {
-      console.warn("RenderPassBuffer capacity is int16");
+    if (capacity > 32767 || capacity < 1) {
+      console.warn("RenderPassBuffer capacity is int16 > 0");
       capacity = 256;
     }
     this.type = new Uint8Array(capacity);

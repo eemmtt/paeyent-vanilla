@@ -11,8 +11,8 @@ export class PaeyentEventDataBuffer {
   capacity: number;
 
   constructor(capacity: number = 256) {
-    if (capacity > 32767 || capacity < -32768) {
-      console.warn("PaeyentEventDataBuffer capacity is int16");
+    if (capacity > 32767 || capacity < 1) {
+      console.warn("PaeyentEventDataBuffer capacity is int16 > 0");
       capacity = 256;
     }
     this.x = new Float32Array(capacity);

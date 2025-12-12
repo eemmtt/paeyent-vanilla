@@ -14,8 +14,8 @@ export class RenderPassDataBuffer {
   capacity: number;
 
   constructor(capacity: number = 256) {
-    if (capacity > 32767 || capacity < -32768) {
-      console.warn("RenderPassDataBuffer capacity is int16");
+    if (capacity > 32767 || capacity < 1) {
+      console.warn("RenderPassDataBuffer capacity is int16 > 0");
       capacity = 256;
     }
 
