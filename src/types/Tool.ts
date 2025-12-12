@@ -2,13 +2,14 @@ import { type Model } from "./Model";
 
 const PT_STRIDE = 2;
 //TODO: implement brush
-export type ToolType = "line" | "fan" /*| "brush"*/;
+export type ToolType = "line" | "fan" | "nav" /*| "brush"*/;
 
 export const ToolStride = 4; //each tool implements: pointerdown, pointerup, pointermove, cancel. 4 total.
 export const ToolLookup = {
   line: 0,
   fan: 1,
-  //brush: 2,
+  nav: 2,
+  //brush: 3,
 } as const;
 
 export const ToolUpdaters = [
@@ -20,6 +21,10 @@ export const ToolUpdaters = [
   fan_pointerup,
   fan_pointermove,
   fan_cancel,
+  nav_pointerdown,
+  nav_pointerup,
+  nav_pointermove,
+  nav_cancel,
   // brush_pointerdown,
   // brush_pointerup,
   // brush_pointermove,
@@ -34,15 +39,18 @@ function line_pointerdown(model: Model, dataIdx: number) {
   }
 
   // viewport coordinate needs to be scaled to the aspect ratio
-  // of the texture
-
+  // of the texture.
   const viewportX = model.eventDataBuffer.x[dataIdx];
   const viewportY = model.eventDataBuffer.y[dataIdx];
+  const centerClientX = model.clientWidth * 0.5;
+  const centerClientY = model.clientHeight * 0.5;
   const textureX =
-    ((viewportX - model.texture_offset_x) / model.zoom) *
+    ((viewportX - centerClientX) / model.zoom +
+      (centerClientX - model.texture_offset_x)) *
     model.viewportToTextureX;
   const textureY =
-    ((viewportY - model.texture_offset_y) / model.zoom) *
+    ((viewportY - centerClientY) / model.zoom +
+      (centerClientY - model.texture_offset_y)) *
     model.viewportToTextureY;
 
   if (!model.is_drawing) {
@@ -61,11 +69,15 @@ function line_pointermove(model: Model, dataIdx: number) {
   if (model.is_drawing) {
     const viewportX = model.eventDataBuffer.x[dataIdx];
     const viewportY = model.eventDataBuffer.y[dataIdx];
+    const centerClientX = model.clientWidth * 0.5;
+    const centerClientY = model.clientHeight * 0.5;
     const textureX =
-      ((viewportX - model.texture_offset_x) / model.zoom) *
+      ((viewportX - centerClientX) / model.zoom +
+        (centerClientX - model.texture_offset_x)) *
       model.viewportToTextureX;
     const textureY =
-      ((viewportY - model.texture_offset_y) / model.zoom) *
+      ((viewportY - centerClientY) / model.zoom +
+        (centerClientY - model.texture_offset_y)) *
       model.viewportToTextureY;
 
     line_hover(model, textureX, textureY);
@@ -161,11 +173,15 @@ function fan_pointerdown(model: Model, dataIdx: number) {
 
   const viewportX = model.eventDataBuffer.x[dataIdx];
   const viewportY = model.eventDataBuffer.y[dataIdx];
+  const centerClientX = model.clientWidth * 0.5;
+  const centerClientY = model.clientHeight * 0.5;
   const textureX =
-    ((viewportX - model.texture_offset_x) / model.zoom) *
+    ((viewportX - centerClientX) / model.zoom +
+      (centerClientX - model.texture_offset_x)) *
     model.viewportToTextureX;
   const textureY =
-    ((viewportY - model.texture_offset_y) / model.zoom) *
+    ((viewportY - centerClientY) / model.zoom +
+      (centerClientY - model.texture_offset_y)) *
     model.viewportToTextureY;
 
   if (!model.is_drawing) {
@@ -186,11 +202,15 @@ function fan_pointermove(model: Model, dataIdx: number) {
   if (model.is_drawing) {
     const viewportX = model.eventDataBuffer.x[dataIdx];
     const viewportY = model.eventDataBuffer.y[dataIdx];
+    const centerClientX = model.clientWidth * 0.5;
+    const centerClientY = model.clientHeight * 0.5;
     const textureX =
-      ((viewportX - model.texture_offset_x) / model.zoom) *
+      ((viewportX - centerClientX) / model.zoom +
+        (centerClientX - model.texture_offset_x)) *
       model.viewportToTextureX;
     const textureY =
-      ((viewportY - model.texture_offset_y) / model.zoom) *
+      ((viewportY - centerClientY) / model.zoom +
+        (centerClientY - model.texture_offset_y)) *
       model.viewportToTextureY;
 
     fan_hover(model, textureX, textureY);
@@ -315,6 +335,28 @@ function fan_cancel(model: Model, _dataIdx: number) {
     -1 // no data
   );
 }
+
+/* Nav */
+function nav_pointerdown(model: Model, dataIdx: number) {}
+function nav_pointerup(model: Model, dataIdx: number) {}
+function nav_pointermove(model: Model, dataIdx: number) {}
+function nav_cancel(model: Model, dataIdx: number) {
+  // model.is_drawing = false;
+  // model.num_pts = 0;
+
+  // model.canvas.removeEventListener("pointermove", model.onPointerMove);
+  // model.canvas.removeEventListener("pointerup", model.onPointerUp);
+
+  model.renderPassBuffer.push(
+    0, // RenderPassLookup["clear-fg"] === 0
+    -1 // no data
+  );
+}
+
+//function nav_start(model: Model, event: PointerEvent) {}
+//function nav_stop(model: Model, event: PointerEvent) {}
+//function nav_hover(model: Model, event: PointerEvent) {}
+//function nav_cancel(model: Model) {}
 
 /* BRUSH */
 //function brush_start(model: Model, event: PointerEvent) {}

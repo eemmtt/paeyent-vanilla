@@ -31,7 +31,8 @@ export type UIEventType =
   | "zoom-in"
   | "zoom-out"
   | "pan-x"
-  | "pan-y";
+  | "pan-y"
+  | "button-nav";
 
 export const UIUpdaterLookup = {
   "button-start-session": 0,
@@ -63,6 +64,7 @@ export const UIUpdaterLookup = {
   "zoom-out": 26,
   "pan-x": 27,
   "pan-y": 28,
+  "button-nav": 29,
 } as const;
 
 export const UIUpdaters = [
@@ -95,6 +97,7 @@ export const UIUpdaters = [
   updateZoomOut,
   updatePanX,
   updatePanY,
+  updateButtonNav,
 ];
 
 function updateButtonStartSession(model: Model) {
@@ -177,13 +180,13 @@ function updateButtonLine(model: Model) {
 }
 
 function updateButtonBrush(model: Model) {
-  if (model.curr_tool === 2) {
-    //2 is brush tool idx
+  if (model.curr_tool === 3) {
+    //3 is brush tool idx
     return;
   }
 
   ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
-  model.curr_tool = 2; //2 is brush tool idx
+  model.curr_tool = 3; //2 is brush tool idx
   console.log("Brush tool selected");
 }
 
@@ -329,6 +332,17 @@ function updatePanY(model: Model) {
     0, // clear fg
     -1 // no data
   );
+}
+
+function updateButtonNav(model: Model) {
+  if (model.curr_tool === 2) {
+    //2 is nav tool idx
+    return;
+  }
+
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  model.curr_tool = 2; //2 is nav tool idx
+  console.log("Nav tool selected");
 }
 
 /* helpers */

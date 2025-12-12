@@ -277,6 +277,12 @@ async function main() {
           UIUpdaterLookup["pan-y"],
           -1 // No data
         );
+      } else if (event.key == "n") {
+        model.eventBuffer.push(
+          1, // UIEvent
+          UIUpdaterLookup["button-nav"],
+          -1 // No data
+        );
       } else {
         console.log(`onKeyDown: ${event.key}`);
       }
