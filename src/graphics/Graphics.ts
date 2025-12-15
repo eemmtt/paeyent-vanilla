@@ -37,6 +37,7 @@ export interface GraphicsModel {
   composite_uniform_buffer: GPUBuffer;
   composite_uniform_bindgroup: GPUBindGroup;
   composite_bindgroup: GPUBindGroup;
+  composite_sampler: GPUSampler;
 
   line_pipeline: GPURenderPipeline;
   fan_pipeline: GPURenderPipeline;

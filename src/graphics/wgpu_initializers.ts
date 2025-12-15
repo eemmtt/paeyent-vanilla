@@ -10,6 +10,7 @@ import { RenderPassBuffer } from "../types/RenderPassBuffer";
 import { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 import type { GraphicsModel, Color } from "./Graphics";
 import { wgpu_render } from "./wgpu_render";
+import type { Model } from "../types/Model";
 
 export type FillStyle = "transparent" | "white";
 
@@ -84,6 +85,7 @@ export async function wgpu_init(
     composite_bindgroup,
     composite_uniform_buffer,
     composite_uniform_bindgroup,
+    composite_sampler,
   ] = create_composite_resources(
     device,
     format,
@@ -154,6 +156,7 @@ export async function wgpu_init(
     rectangle_pipeline,
     composite_pipeline,
     composite_bindgroup,
+    composite_sampler,
 
     renderPassBuffer,
     renderPassDataBuffer,
@@ -229,7 +232,7 @@ export function create_composite_resources(
   fg_texture_view: GPUTextureView,
   an_texture_view: GPUTextureView,
   composite_uniform: CompositeUniform
-): [GPURenderPipeline, GPUBindGroup, GPUBuffer, GPUBindGroup] {
+): [GPURenderPipeline, GPUBindGroup, GPUBuffer, GPUBindGroup, GPUSampler] {
   const composite_shader = device.createShaderModule({
     label: "texture compositor",
     code: compositeShaderCode,
@@ -359,7 +362,64 @@ export function create_composite_resources(
     composite_bindgroup,
     composite_uniform_buffer,
     composite_uniform_bindgroup,
+    sampler,
   ];
+}
+
+export function updateCompositeBindgroup(
+  model: Model,
+  an_texture_view: GPUTextureView
+) {
+  const composite_bindgroup_layout = model.device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {
+          type: "filtering",
+        },
+      },
+    ],
+  });
+
+  const composite_bindgroup = model.device.createBindGroup({
+    layout: composite_bindgroup_layout,
+    entries: [
+      { binding: 0, resource: model.bg_texture_view },
+      { binding: 1, resource: model.fg_texture_view },
+      { binding: 2, resource: an_texture_view },
+      { binding: 3, resource: model.composite_sampler },
+    ],
+  });
+
+  model.composite_bindgroup = composite_bindgroup;
 }
 
 export function create_poly_resources(
