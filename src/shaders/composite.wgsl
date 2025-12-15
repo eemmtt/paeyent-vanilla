@@ -54,7 +54,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let texture_uv_coordinates = clamp(texture_pos / texture_size, vec2<f32>(0.0), vec2<f32>(1.0));
     let bg = textureSample(background_tex, tex_sampler, texture_uv_coordinates);
     let fg = textureSample(foreground_tex, tex_sampler, texture_uv_coordinates);
-    let an = textureSample(annotation_tex, tex_sampler, texture_uv_coordinates);
+
+    let viewport_uv_coordinates = clamp(input.ndc_pos.xy / vec2<f32>(u.viewport_width, u.viewport_height), vec2<f32>(0.0), vec2<f32>(1.0));
+    let an = textureSample(annotation_tex, tex_sampler, viewport_uv_coordinates);
 
     // composite fg over bg
     var aggregate_texture_color = fg.rgb * fg.a + bg.rgb * (1.0 - fg.a);
@@ -66,10 +68,11 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let grid_visible = f32(u.zoom >= u.grid_min_zoom);
 
     aggregate_texture_color = mix(aggregate_texture_color, u.grid_color, u.grid_alpha * on_grid * grid_visible);
-
-    // return texture mixed with background
-    return vec4<f32>(
+    let background_and_agg_texture_mix = vec4<f32>(
         mix(u.background_color, aggregate_texture_color, f32(in_texture)),
         1.0
     );
+
+    //composite annotations overtop everything
+    return vec4<f32>(an.rgb * an.a + background_and_agg_texture_mix.rgb * (1.0 - an.a), 1.0);
 }
