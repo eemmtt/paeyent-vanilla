@@ -29,6 +29,10 @@ import {
   onSliderRed,
 } from "./ui/handlers";
 import type { PointerType } from "./types/PaeyentEvent";
+import {
+  create_texture,
+  updateCompositeBindgroup,
+} from "./graphics/wgpu_initializers";
 
 function mainLoop(model: Model) {
   model.timeoutId = setTimeout(() => {
@@ -167,6 +171,17 @@ async function main() {
         throw Error("Retrieved null surface config during resize");
       }
 
+      // recreate annotation texture
+      const [new_an_texture, new_an_texture_view] = create_texture(
+        navigator.gpu.getPreferredCanvasFormat(),
+        model.device,
+        model.canvas,
+        "transparent"
+      );
+      model.an_texture = new_an_texture;
+      model.an_texture_view = new_an_texture_view;
+      updateCompositeBindgroup(model, model.an_texture_view);
+
       // update uniforms
       model.poly_uniform.updateDimensions(model);
       model.composite_uniform.updateDimensionsAndTransforms(model);
@@ -250,37 +265,19 @@ async function main() {
       } else if (event.key == "z") {
         model.eventBuffer.push(
           1, // UIEvent
-          UIUpdaterLookup["zoom-in"],
+          UIUpdaterLookup["button-zoom"],
           -1 // No data
         );
-      } else if (event.key == "x") {
+      } else if (event.key == "p") {
         model.eventBuffer.push(
           1, // UIEvent
-          UIUpdaterLookup["zoom-out"],
+          UIUpdaterLookup["button-pan"],
           -1 // No data
         );
       } else if (event.key == "h") {
         model.eventBuffer.push(
           1, // UIEvent
           UIUpdaterLookup["home-view"],
-          -1 // No data
-        );
-      } else if (event.key == "ArrowRight") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["pan-x"],
-          -1 // No data
-        );
-      } else if (event.key == "ArrowDown") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["pan-y"],
-          -1 // No data
-        );
-      } else if (event.key == "n") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-nav"],
           -1 // No data
         );
       } else {
