@@ -1,5 +1,5 @@
-import type { Model } from "./types/Model";
-import { UIUpdaterLookup } from "./ui/events";
+import { type Model, type SessionSettings } from "../types/Model";
+import { UIUpdaterLookup } from "./updaters";
 
 export type EventHandler = (event: Event) => void;
 

@@ -10,9 +10,9 @@ export class PolyUniform {
     line_width:     f32,     //4
     canvas_width:   f32,     //4
     canvas_height:  f32,     //4
-    brush_radius    f32,     //4
-    brush_softness  f32,     //4
-    brush_noise_jitter  f32, //4
+    radius:    f32,     //4
+    softness:  f32,     //4
+    noise_jitter:  f32, //4
                               = (18 * 4 = 72) / 256
   */
 
@@ -30,9 +30,9 @@ export class PolyUniform {
   readonly offset_line_width = 12; //f32    4
   readonly offset_canvas_width = 13; //f32  4
   readonly offset_canvas_height = 14; //f32 4
-  readonly offset_brush_radius = 15; //f32         4
-  readonly offset_brush_softness = 16; //f32       4
-  readonly offset_brush_noise_jitter = 17; //f32   4
+  readonly offset_radius = 15; //f32         4
+  readonly offset_softness = 16; //f32       4
+  readonly offset_noise_jitter = 17; //f32   4
 
   data: Float32Array;
 
@@ -47,9 +47,9 @@ export class PolyUniform {
     this.data[this.offset_line_width] = 2;
     this.data[this.offset_canvas_width] = canvasClientWidth;
     this.data[this.offset_canvas_height] = canvasClientHeight;
-    this.data[this.offset_brush_radius] = 6;
-    this.data[this.offset_brush_softness] = 0;
-    this.data[this.offset_brush_noise_jitter] = 0.1;
+    this.data[this.offset_radius] = 6;
+    this.data[this.offset_softness] = 0;
+    this.data[this.offset_noise_jitter] = 0.1;
 
     const alignment = device.limits.minUniformBufferOffsetAlignment;
     this.aligned_size = Math.ceil((this.num_bytes * 4) / alignment) * alignment;
@@ -80,6 +80,10 @@ export class PolyUniform {
 
   set_canvas_height(clientHeight: number) {
     this.data[this.offset_canvas_height] = clientHeight;
+  }
+
+  set_radius(radius: number) {
+    this.data[this.offset_radius] = radius;
   }
 
   updateDimensions(model: Model) {

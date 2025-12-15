@@ -301,7 +301,6 @@ function updateHomeView(model: Model) {
 function updateZoomIn(model: Model) {
   model.zoom += 0.1;
   model.composite_uniform.addZoom(0.1);
-  console.log(`updateZoomIn - zoom: ${model.zoom}`);
 
   model.renderPassBuffer.push(
     0, // clear fg
@@ -314,7 +313,6 @@ function updateZoomOut(model: Model) {
   const newZoom = model.zoom - 0.1 > 0.01 ? model.zoom - 0.1 : 0.1;
   model.zoom = newZoom;
   model.composite_uniform.set_zoom(newZoom);
-  console.log(`updateZoomOut - zoom: ${model.zoom}`);
 
   model.renderPassBuffer.push(
     0, // clear fg

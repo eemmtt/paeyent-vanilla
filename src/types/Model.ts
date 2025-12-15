@@ -9,7 +9,7 @@ import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
 import { PaeyentEventDataBuffer } from "./PaeyentEventDataBuffer";
 import type { RenderPassBuffer } from "./RenderPassBuffer";
 import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
-import { voidEventHandler } from "../EventHandlers";
+import { voidEventHandler } from "../ui/handlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
 import type { CompositeUniform } from "./CompositeUniform";
 
@@ -50,6 +50,8 @@ export interface Model {
 
   line_pipeline: GPURenderPipeline;
   fan_pipeline: GPURenderPipeline;
+  circle_pipeline: GPURenderPipeline;
+  rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
 
   render: RenderFunction;

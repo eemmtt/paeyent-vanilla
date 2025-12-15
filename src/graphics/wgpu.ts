@@ -1,6 +1,8 @@
 import compositeShaderCode from "../shaders/composite.wgsl?raw";
 import lineShaderCode from "../shaders/polyline.wgsl?raw";
 import fanShaderCode from "../shaders/polyfan.wgsl?raw";
+import circleShaderCode from "../shaders/circle.wgsl?raw";
+import rectangleShaderCode from "../shaders/rectangle.wgsl?raw";
 
 import { type Model } from "../types/Model";
 import { PolyUniform } from "../types/PolyUniform";
@@ -103,8 +105,14 @@ export async function wgpu_init(
     maxUniformBufferSize / poly_uniform.aligned_size
   );
 
-  const [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline] =
-    create_poly_resources(device, format, poly_uniform, maxRenderPasses);
+  const [
+    poly_buffer,
+    poly_bindgroup,
+    line_pipeline,
+    fan_pipeline,
+    circle_pipeline,
+    rectangle_pipeline,
+  ] = create_poly_resources(device, format, poly_uniform, maxRenderPasses);
 
   const renderPassBuffer = new RenderPassBuffer(maxRenderPasses);
   const renderPassDataBuffer = new RenderPassDataBuffer(maxRenderPasses);
@@ -142,6 +150,8 @@ export async function wgpu_init(
 
     line_pipeline,
     fan_pipeline,
+    circle_pipeline,
+    rectangle_pipeline,
     composite_pipeline,
     composite_bindgroup,
 
@@ -200,6 +210,9 @@ function wgpu_render(model: Model) {
       model.renderPassBuffer.dataIdx[i]
     );
   }
+
+  onCircleTest(model, encoder);
+  onRectangleTest(model, encoder);
 
   // always finish with composite pass
   {
@@ -437,17 +450,24 @@ function create_poly_resources(
   format: GPUTextureFormat,
   poly_uniform: PolyUniform,
   max_queued_renderpasses: number
-): [GPUBuffer, GPUBindGroup, GPURenderPipeline, GPURenderPipeline] {
-  let poly_buffer = device.createBuffer({
+): [
+  GPUBuffer,
+  GPUBindGroup,
+  GPURenderPipeline,
+  GPURenderPipeline,
+  GPURenderPipeline,
+  GPURenderPipeline,
+] {
+  const poly_buffer = device.createBuffer({
     size: poly_uniform.aligned_size * max_queued_renderpasses,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  let poly_bindgroup_layout = device.createBindGroupLayout({
+  const poly_bindgroup_layout = device.createBindGroupLayout({
     entries: [
       {
         binding: 0,
-        visibility: GPUShaderStage.VERTEX,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
         buffer: {
           type: "uniform",
           hasDynamicOffset: true,
@@ -456,7 +476,7 @@ function create_poly_resources(
     ],
   });
 
-  let poly_bindgroup = device.createBindGroup({
+  const poly_bindgroup = device.createBindGroup({
     layout: poly_bindgroup_layout,
     entries: [
       {
@@ -470,21 +490,31 @@ function create_poly_resources(
     ],
   });
 
-  let line_shader = device.createShaderModule({
+  const line_shader = device.createShaderModule({
     label: "polyline shader",
     code: lineShaderCode,
   });
 
-  let fan_shader = device.createShaderModule({
+  const fan_shader = device.createShaderModule({
     label: "polyfan shader",
     code: fanShaderCode,
   });
 
-  let poly_pipeline_layout = device.createPipelineLayout({
+  const circle_shader = device.createShaderModule({
+    label: "circle shader",
+    code: circleShaderCode,
+  });
+
+  const rectangle_shader = device.createShaderModule({
+    label: "rectangle shader",
+    code: rectangleShaderCode,
+  });
+
+  const poly_pipeline_layout = device.createPipelineLayout({
     bindGroupLayouts: [poly_bindgroup_layout],
   });
 
-  let line_pipeline = device.createRenderPipeline({
+  const line_pipeline = device.createRenderPipeline({
     layout: poly_pipeline_layout,
     vertex: {
       module: line_shader,
@@ -513,7 +543,7 @@ function create_poly_resources(
     },
   });
 
-  let fan_pipeline = device.createRenderPipeline({
+  const fan_pipeline = device.createRenderPipeline({
     layout: poly_pipeline_layout,
     vertex: {
       module: fan_shader,
@@ -542,7 +572,72 @@ function create_poly_resources(
     },
   });
 
-  return [poly_buffer, poly_bindgroup, line_pipeline, fan_pipeline];
+  const circle_pipeline = device.createRenderPipeline({
+    layout: poly_pipeline_layout,
+    vertex: {
+      module: circle_shader,
+      entryPoint: "vs_main",
+    },
+    primitive: {
+      topology: "triangle-list",
+      frontFace: "ccw",
+      cullMode: "back",
+      unclippedDepth: false,
+    },
+    multisample: {
+      count: 1,
+      mask: 0xffffffff,
+      alphaToCoverageEnabled: false,
+    },
+    fragment: {
+      module: circle_shader,
+      entryPoint: "fs_main",
+      targets: [
+        {
+          format: format,
+          writeMask: 0xf,
+        },
+      ],
+    },
+  });
+
+  const rectangle_pipeline = device.createRenderPipeline({
+    layout: poly_pipeline_layout,
+    vertex: {
+      module: rectangle_shader,
+      entryPoint: "vs_main",
+    },
+    primitive: {
+      topology: "triangle-list",
+      frontFace: "ccw",
+      cullMode: "back",
+      unclippedDepth: false,
+    },
+    multisample: {
+      count: 1,
+      mask: 0xffffffff,
+      alphaToCoverageEnabled: false,
+    },
+    fragment: {
+      module: rectangle_shader,
+      entryPoint: "fs_main",
+      targets: [
+        {
+          format: format,
+          writeMask: 0xf,
+        },
+      ],
+    },
+  });
+
+  return [
+    poly_buffer,
+    poly_bindgroup,
+    line_pipeline,
+    fan_pipeline,
+    circle_pipeline,
+    rectangle_pipeline,
+  ];
 }
 
 function onClearFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
@@ -894,4 +989,89 @@ function onBrushFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 function onBrushBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   console.warn("onBrushBg not implemented");
   return;
+}
+
+function onCircleTest(model: Model, encoder: GPUCommandEncoder) {
+  const x0 = model.clientWidth / 4;
+  const y0 = model.clientHeight / 4;
+  const r = 1;
+  const g = 0;
+  const b = 0;
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_line_width(2);
+  model.poly_uniform.set_radius(15);
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    128 * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Circle Test",
+    colorAttachments: [
+      {
+        view: model.fg_texture_view,
+        //clearValue: [0, 0, 0, 0],
+        loadOp: "load" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.circle_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    128 * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
+}
+
+function onRectangleTest(model: Model, encoder: GPUCommandEncoder) {
+  const x0 = 100;
+  const y0 = 100;
+  const x1 = 200;
+  const y1 = 110;
+  const x2 = 140;
+  const y2 = 200;
+  const x3 = 250;
+  const y3 = 290;
+  const r = 0.1;
+  const g = 0.1;
+  const b = 0;
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_pos(1, x1, y1);
+  model.poly_uniform.set_pos(2, x2, y2);
+  model.poly_uniform.set_pos(3, x3, y3);
+
+  model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_line_width(1);
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    129 * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Rectangle Test",
+    colorAttachments: [
+      {
+        view: model.fg_texture_view,
+        //clearValue: [0, 0, 0, 0],
+        loadOp: "load" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.rectangle_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    129 * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
 }

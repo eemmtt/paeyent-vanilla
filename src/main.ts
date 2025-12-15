@@ -1,7 +1,7 @@
 import "./style.css";
 import { ToolUpdaters, ToolStride } from "./types/Tool";
 import { type Model, model_init, type SessionSettings } from "./types/Model";
-import { UIUpdaterLookup, UIUpdaters } from "./ui/events";
+import { UIUpdaterLookup, UIUpdaters } from "./ui/updaters";
 import {
   onBrushButton,
   onConstraintActionsCount,
@@ -27,7 +27,7 @@ import {
   onSliderBlue,
   onSliderGreen,
   onSliderRed,
-} from "./EventHandlers";
+} from "./ui/handlers";
 import type { PointerType } from "./types/PaeyentEvent";
 
 function mainLoop(model: Model) {

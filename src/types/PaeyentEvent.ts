@@ -1,4 +1,4 @@
-import type { UIEventType } from "../ui/events";
+import type { UIEventType } from "../ui/updaters";
 
 export interface PaeyentEvent {
   id: 0 | 1; //PointerEventType | UIEventType

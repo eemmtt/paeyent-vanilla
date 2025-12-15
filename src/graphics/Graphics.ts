@@ -40,6 +40,8 @@ export interface GraphicsModel {
 
   line_pipeline: GPURenderPipeline;
   fan_pipeline: GPURenderPipeline;
+  circle_pipeline: GPURenderPipeline;
+  rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
 
   renderPassBuffer: RenderPassBuffer;
