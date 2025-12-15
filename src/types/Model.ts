@@ -47,6 +47,7 @@ export interface Model {
   composite_uniform_buffer: GPUBuffer;
   composite_uniform_bindgroup: GPUBindGroup;
   composite_bindgroup: GPUBindGroup;
+  composite_sampler: GPUSampler;
 
   line_pipeline: GPURenderPipeline;
   fan_pipeline: GPURenderPipeline;
@@ -60,7 +61,10 @@ export interface Model {
 
   /* drawing state */
   curr_tool: number; //used to index into toolhandlers. See tool.ts
+  last_tool: number; //used to index into toolhandlers. See tool.ts
   is_drawing: boolean;
+  is_navigating: boolean;
+  nav_pt: Float32Array;
   pts: Float32Array;
   num_pts: number;
   color: Float32Array;
@@ -68,8 +72,11 @@ export interface Model {
   eventDataBuffer: PaeyentEventDataBuffer;
   pointerEventVoid: PointerEvent;
   zoom: number;
+  zoom_last: number;
   texture_offset_x: number; //in css px
   texture_offset_y: number; //in css px
+  texture_offset_last_x: number; //in css px
+  texture_offset_last_y: number; //in css px
 
   /* menu state */
   menu_container: Element;
@@ -165,18 +172,22 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   const graphics_model = await graphics_build();
   const drawing_model = {
     curr_tool: 0,
+    last_tool: 0,
     is_drawing: false,
+    is_navigating: false,
+    nav_pt: new Float32Array(2),
     pts: new Float32Array(32),
     num_pts: 0,
     color: init_color,
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
     eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
-    zoom: graphics_model.composite_uniform.data[
-      graphics_model.composite_uniform.offset_zoom
-    ],
+    zoom: graphics_model.composite_uniform.get_zoom(),
+    zoom_last: graphics_model.composite_uniform.get_zoom(),
     texture_offset_x: 0,
     texture_offset_y: 0,
+    texture_offset_last_x: 0,
+    texture_offset_last_y: 0,
   };
 
   // these handlers get initialized in main()
