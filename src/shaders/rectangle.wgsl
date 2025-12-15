@@ -68,5 +68,10 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
                     abs(poly.pos_b.x - input.css_pos.x) < poly.line_width ||
                     abs(poly.pos_b.y - input.css_pos.y) < poly.line_width;
 
-    return select(vec4<f32>(0,0,0,0), poly.rgba, on_edge);
+    if (!on_edge){
+        discard;
+    }
+    return poly.rgba;
+    
+    //return select(vec4<f32>(0,0,0,0), poly.rgba, on_edge);
 }

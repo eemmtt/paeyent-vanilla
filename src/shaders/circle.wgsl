@@ -63,5 +63,9 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let dist_css = distance(poly.pos_a, input.css_pos);
     let on_ring = dist_css > poly.radius - (poly.line_width * 0.5) && dist_css < poly.radius + (poly.line_width * 0.5);
 
-    return select(vec4<f32>(0,0,0,0), poly.rgba, on_ring);
+    if (!on_ring){
+        discard;
+    }
+    return poly.rgba;
+    //return select(vec4<f32>(0,0,0,0), poly.rgba, on_ring);
 }
