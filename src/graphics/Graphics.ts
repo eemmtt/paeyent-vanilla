@@ -1,4 +1,4 @@
-import { wgpu_init } from "./wgpu";
+import { wgpu_init } from "./wgpu_initializers";
 import type { Model } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
 import type { RenderPassBuffer } from "../types/RenderPassBuffer";
