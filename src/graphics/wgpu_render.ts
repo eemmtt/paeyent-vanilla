@@ -17,6 +17,8 @@ export const RenderPassLookup = {
   "fan-bg": 7,
   "brush-fg": 8,
   "brush-bg": 9,
+  "rectangle-anno": 10,
+  "circle-anno": 11,
 } as const;
 
 export const RenderPassHandlers = [
@@ -30,6 +32,8 @@ export const RenderPassHandlers = [
   onFanBg,
   onBrushFg,
   onBrushBg,
+  onRectangleAnno,
+  onCircleAnno,
 ] as const;
 
 //TODO: batch repeated calls when recreating background from operation history
@@ -49,11 +53,16 @@ export function wgpu_render(model: Model) {
     );
   }
 
-  onCircleTest(model, encoder);
-  onRectangleTest(model, encoder);
+  //onCircleTest(model, encoder);
+  //onRectangleTest(model, encoder);
 
   // always finish with composite pass
   {
+    model.composite_uniform.set_zoom(model.zoom);
+    model.composite_uniform.set_texture_offset(
+      model.texture_offset_x * model.dpr,
+      model.texture_offset_y * model.dpr
+    );
     model.device.queue.writeBuffer(
       model.composite_uniform_buffer,
       0,
@@ -432,6 +441,55 @@ function onBrushBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   console.warn("onBrushBg not implemented");
   return;
 }
+
+function onRectangleAnno(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const x1 = model.renderPassDataBuffer.x1[dataIdx];
+  const y1 = model.renderPassDataBuffer.y1[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_pos(1, x1, y1);
+  model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_line_width(2);
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Rectangle Anno",
+    colorAttachments: [
+      {
+        view: model.an_texture_view,
+        clearValue: [0, 0, 0, 0],
+        loadOp: "clear" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.rectangle_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
+}
+function onCircleAnno(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {}
 
 function onCircleTest(model: Model, encoder: GPUCommandEncoder) {
   const x0 = model.clientWidth / 2;
