@@ -74,6 +74,9 @@ export class CompositeUniform {
   addZoom(increment: number) {
     this.data[this.offset_zoom] += increment;
   }
+  get_zoom() {
+    return this.data[this.offset_zoom];
+  }
 
   set_viewport_width(width: number) {
     this.data[this.offset_viewportWidth] = width;
