@@ -1,5 +1,5 @@
 import type { Model } from "../types/Model";
-import { ToolUpdaters, ToolStride } from "../types/Tool";
+import { ToolUpdaters, ToolStride, ToolLookup } from "../types/Tool";
 
 export type UIEventType =
   | "button-start-session"
@@ -28,11 +28,8 @@ export type UIEventType =
   | "input-slider-blue"
   | "window-resize"
   | "home-view"
-  | "zoom-in"
-  | "zoom-out"
-  | "pan-x"
-  | "pan-y"
-  | "button-nav";
+  | "button-zoom"
+  | "button-pan";
 
 export const UIUpdaterLookup = {
   "button-start-session": 0,
@@ -60,11 +57,8 @@ export const UIUpdaterLookup = {
   "input-slider-green": 22,
   "input-slider-blue": 23,
   "home-view": 24,
-  "zoom-in": 25,
-  "zoom-out": 26,
-  "pan-x": 27,
-  "pan-y": 28,
-  "button-nav": 29,
+  "button-zoom": 25,
+  "button-pan": 26,
 } as const;
 
 export const UIUpdaters = [
@@ -93,11 +87,8 @@ export const UIUpdaters = [
   updateSliderGreen,
   updateSliderBlue,
   updateHomeView,
-  updateZoomIn,
-  updateZoomOut,
-  updatePanX,
-  updatePanY,
-  updateButtonNav,
+  updateButtonZoom,
+  updateButtonPan,
 ];
 
 function updateButtonStartSession(model: Model) {
@@ -286,6 +277,10 @@ function updateSliderBlue(model: Model) {
 }
 
 function updateHomeView(model: Model) {
+  if (model.is_navigating) {
+    ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //cancel nav tool
+  }
+
   model.zoom = 1.0;
   model.texture_offset_x = 0;
   model.texture_offset_y = 0;
@@ -338,15 +333,27 @@ function updatePanY(model: Model) {
   );
 }
 
-function updateButtonNav(model: Model) {
-  if (model.curr_tool === 2) {
-    //2 is nav tool idx
+function updateButtonZoom(model: Model) {
+  if (model.curr_tool === ToolLookup["zoom"]) {
     return;
   }
 
   ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
-  model.curr_tool = 2; //2 is nav tool idx
-  console.log("Nav tool selected");
+  model.last_tool = model.curr_tool;
+  model.curr_tool = ToolLookup["zoom"];
+  console.log("Zoom tool selected");
+}
+
+function updateButtonPan(model: Model) {
+  if (model.curr_tool === ToolLookup["pan"]) {
+    return;
+  }
+
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  model.last_tool = model.curr_tool;
+  model.curr_tool = ToolLookup["pan"];
+  ToolUpdaters[ToolLookup["pan"] * ToolStride + 0](model, -1); //Call pan_pointerdown
+  console.log("Pan tool selected");
 }
 
 /* helpers */

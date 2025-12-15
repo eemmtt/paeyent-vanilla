@@ -1,14 +1,16 @@
+import { RenderPassLookup } from "../graphics/wgpu_render";
 import { type Model } from "./Model";
 
 const PT_STRIDE = 2;
 //TODO: implement brush
-export type ToolType = "line" | "fan" | "nav" /*| "brush"*/;
+export type ToolType = "line" | "fan" | "pan" | "zoom" /*| "brush"*/;
 
 export const ToolStride = 4; //each tool implements: pointerdown, pointerup, pointermove, cancel. 4 total.
 export const ToolLookup = {
   line: 0,
   fan: 1,
-  nav: 2,
+  pan: 2,
+  zoom: 3,
   //brush: 3,
 } as const;
 
@@ -17,18 +19,26 @@ export const ToolUpdaters = [
   line_pointerup,
   line_pointermove,
   line_cancel,
+
   fan_pointerdown,
   fan_pointerup,
   fan_pointermove,
   fan_cancel,
-  nav_pointerdown,
-  nav_pointerup,
-  nav_pointermove,
-  nav_cancel,
+
   // brush_pointerdown,
   // brush_pointerup,
   // brush_pointermove,
   // brush_cancel,
+
+  pan_pointerdown,
+  pan_pointerup,
+  pan_pointermove,
+  pan_cancel,
+
+  zoom_pointerdown,
+  zoom_pointerup,
+  zoom_pointermove,
+  zoom_cancel,
 ] as const;
 
 /* POLY LINE */
@@ -336,27 +346,166 @@ function fan_cancel(model: Model, _dataIdx: number) {
   );
 }
 
-/* Nav */
-function nav_pointerdown(model: Model, dataIdx: number) {}
-function nav_pointerup(model: Model, dataIdx: number) {}
-function nav_pointermove(model: Model, dataIdx: number) {}
-function nav_cancel(model: Model, dataIdx: number) {
-  // model.is_drawing = false;
-  // model.num_pts = 0;
+/* Pan */
+function pan_pointerdown(model: Model, dataIdx: number) {
+  if (!model.is_navigating) {
+    pan_start(model);
+  } else {
+    if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
+      console.warn(`pan_pointerdown: invalid dataIdx ${dataIdx}`);
+      return;
+    }
 
-  // model.canvas.removeEventListener("pointermove", model.onPointerMove);
-  // model.canvas.removeEventListener("pointerup", model.onPointerUp);
+    const viewportX = model.eventDataBuffer.x[dataIdx];
+    const viewportY = model.eventDataBuffer.y[dataIdx];
+    pan_stop(model, viewportX, viewportY);
+  }
+}
 
+function pan_pointerup(_model: Model, _dataIdx: number) {}
+function pan_pointermove(model: Model, dataIdx: number) {
+  if (model.is_navigating) {
+    const viewportX = model.eventDataBuffer.x[dataIdx];
+    const viewportY = model.eventDataBuffer.y[dataIdx];
+    pan_hover(model, viewportX, viewportY);
+  }
+}
+function pan_cancel(model: Model, _dataIdx: number) {
+  //reset view
+  model.is_navigating = false;
+  model.zoom = model.zoom_last;
+  model.texture_offset_x = model.texture_offset_last_x;
+  model.texture_offset_y = model.texture_offset_last_y;
+  model.curr_tool = model.last_tool;
+
+  model.canvas.removeEventListener("pointermove", model.onPointerMove);
+  model.canvas.removeEventListener("pointerup", model.onPointerUp);
+
+  model.renderPassBuffer.push(
+    RenderPassLookup["clear-anno"],
+    -1 // no data
+  );
+}
+
+function pan_start(model: Model) {
+  model.is_navigating = true;
+  model.zoom_last = model.zoom;
+  model.texture_offset_last_x = model.texture_offset_x;
+  model.texture_offset_last_y = model.texture_offset_y;
+
+  model.zoom = 0.3;
+  model.texture_offset_x = 0;
+  model.texture_offset_y = 0;
+  model.nav_pt[0] = model.clientWidth / 2;
+  model.nav_pt[1] = model.clientHeight / 2;
+
+  model.canvas.addEventListener("pointermove", model.onPointerMove);
+  model.canvas.addEventListener(
+    "pointerup",
+    model.onPointerUp,
+    model.handleOnce
+  );
+
+  const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
+  const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
+
+  model.renderPassBuffer.push(
+    RenderPassLookup["rectangle-anno"],
+    model.renderPassDataBuffer.push(
+      model.clientWidth * 0.5 - halfZoomedViewportWidth, //left
+      model.clientHeight * 0.5 - halfZoomedViewportHeight, //top
+      model.clientWidth * 0.5 + halfZoomedViewportWidth, //right
+      model.clientHeight * 0.5 + halfZoomedViewportHeight, //bottom
+      -1,
+      -1,
+      0.6,
+      0.1,
+      0.2
+    )
+  );
+}
+function pan_stop(model: Model, viewportX: number, viewportY: number) {
+  //check if pdown was in marker
+  const radius_squared = 15 * 15;
+  const dist_squared =
+    (viewportX - model.nav_pt[0]) ** 2 + (viewportY - model.nav_pt[1]) ** 2;
+  if (dist_squared <= radius_squared) {
+    // restore pre-pan state, keeping new offset
+    model.is_navigating = false;
+    model.texture_offset_x =
+      (model.clientWidth * 0.5 - model.nav_pt[0]) *
+      (model.zoom_last / model.zoom);
+    model.texture_offset_y =
+      (model.clientHeight * 0.5 - model.nav_pt[1]) *
+      (model.zoom_last / model.zoom);
+    model.zoom = model.zoom_last;
+
+    model.canvas.removeEventListener("pointermove", model.onPointerMove);
+    model.canvas.removeEventListener("pointerup", model.onPointerUp);
+    model.curr_tool = model.last_tool;
+
+    model.renderPassBuffer.push(RenderPassLookup["clear-anno"], -1);
+  } else {
+    model.nav_pt[0] = viewportX;
+    model.nav_pt[1] = viewportY;
+
+    //draw rectangle the size of texture over viewport centered on viewport cursor pos
+    const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
+    const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
+
+    model.renderPassBuffer.push(
+      RenderPassLookup["rectangle-anno"],
+      model.renderPassDataBuffer.push(
+        viewportX - halfZoomedViewportWidth, //left
+        viewportY - halfZoomedViewportHeight, //top
+        viewportX + halfZoomedViewportWidth, //right
+        viewportY + halfZoomedViewportHeight, //bottom
+        -1,
+        -1,
+        0,
+        0,
+        0
+      )
+    );
+  }
+  return;
+}
+function pan_hover(model: Model, viewportX: number, viewportY: number) {
+  //draw rectangle the size of texture over viewport centered on viewport cursor pos
+  const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
+  const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
+
+  model.renderPassBuffer.push(
+    RenderPassLookup["rectangle-anno"],
+    model.renderPassDataBuffer.push(
+      viewportX - halfZoomedViewportWidth, //left
+      viewportY - halfZoomedViewportHeight, //top
+      viewportX + halfZoomedViewportWidth, //right
+      viewportY + halfZoomedViewportHeight, //bottom
+      -1,
+      -1,
+      0.1,
+      0.4,
+      0.8
+    )
+  );
+}
+
+/* Zoom */
+function zoom_pointerdown(model: Model, dataIdx: number) {}
+function zoom_pointerup(model: Model, dataIdx: number) {}
+function zoom_pointermove(model: Model, dataIdx: number) {}
+function zoom_cancel(model: Model, dataIdx: number) {
   model.renderPassBuffer.push(
     0, // RenderPassLookup["clear-fg"] === 0
     -1 // no data
   );
 }
 
-//function nav_start(model: Model, event: PointerEvent) {}
-//function nav_stop(model: Model, event: PointerEvent) {}
-//function nav_hover(model: Model, event: PointerEvent) {}
-//function nav_cancel(model: Model) {}
+//function zoom_start(model: Model, event: PointerEvent) {}
+//function zoom_stop(model: Model, event: PointerEvent) {}
+//function zoom_hover(model: Model, event: PointerEvent) {}
+//function zoom_cancel(model: Model) {}
 
 /* BRUSH */
 //function brush_start(model: Model, event: PointerEvent) {}
