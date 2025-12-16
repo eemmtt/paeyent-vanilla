@@ -17,8 +17,10 @@ export const RenderPassLookup = {
   "fan-bg": 7,
   "brush-fg": 8,
   "brush-bg": 9,
-  "rectangle-anno": 10,
-  "circle-anno": 11,
+  "rectangle-append-anno": 10,
+  "rectangle-replace-anno": 11,
+  "circle-append-anno": 12,
+  "circle-replace-anno": 13,
 } as const;
 
 export const RenderPassHandlers = [
@@ -32,8 +34,10 @@ export const RenderPassHandlers = [
   onFanBg,
   onBrushFg,
   onBrushBg,
-  onRectangleAnno,
-  onCircleAnno,
+  onRectangleAppendAnno,
+  onRectangleReplaceAnno,
+  onCircleAppendAnno,
+  onCircleReplaceAnno,
 ] as const;
 
 //TODO: batch repeated calls when recreating background from operation history
@@ -52,9 +56,6 @@ export function wgpu_render(model: Model) {
       model.renderPassBuffer.dataIdx[i]
     );
   }
-
-  //onCircleTest(model, encoder);
-  //onRectangleTest(model, encoder);
 
   // always finish with composite pass
   {
@@ -442,7 +443,7 @@ function onBrushBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   return;
 }
 
-function onRectangleAnno(
+function onRectangleReplaceAnno(
   model: Model,
   encoder: GPUCommandEncoder,
   dataIdx: number
@@ -458,7 +459,7 @@ function onRectangleAnno(
   model.poly_uniform.set_pos(0, x0, y0);
   model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(2);
+  model.poly_uniform.set_line_width(1);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
@@ -467,7 +468,7 @@ function onRectangleAnno(
   );
 
   const renderpass = encoder.beginRenderPass({
-    label: "Rectangle Anno",
+    label: "Rectangle Replace Anno",
     colorAttachments: [
       {
         view: model.an_texture_view,
@@ -485,32 +486,74 @@ function onRectangleAnno(
   renderpass.draw(6, 1);
   renderpass.end();
 }
-function onCircleAnno(
+
+function onRectangleAppendAnno(
   model: Model,
   encoder: GPUCommandEncoder,
   dataIdx: number
-) {}
-
-function onCircleTest(model: Model, encoder: GPUCommandEncoder) {
-  const x0 = model.clientWidth / 2;
-  const y0 = model.clientHeight / 2;
-  const r = 1;
-  const g = 0;
-  const b = 0;
+) {
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const x1 = model.renderPassDataBuffer.x1[dataIdx];
+  const y1 = model.renderPassDataBuffer.y1[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
 
   model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(2);
-  model.poly_uniform.set_radius(150);
+  model.poly_uniform.set_line_width(1);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    128 * model.poly_uniform.aligned_size,
+    dataIdx * model.poly_uniform.aligned_size,
     model.poly_uniform.data.buffer
   );
 
   const renderpass = encoder.beginRenderPass({
-    label: "Circle Test",
+    label: "Rectangle Append Anno",
+    colorAttachments: [
+      {
+        view: model.an_texture_view,
+        loadOp: "load" as GPULoadOp,
+        storeOp: "store" as GPUStoreOp,
+      },
+    ],
+  });
+
+  renderpass.setPipeline(model.rectangle_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.poly_uniform.aligned_size,
+  ]);
+  renderpass.draw(6, 1);
+  renderpass.end();
+}
+
+function onCircleAppendAnno(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
+
+  model.poly_uniform.set_pos(0, x0, y0);
+  model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_line_width(1);
+  model.poly_uniform.set_radius(model.marker_radius);
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.poly_uniform.aligned_size,
+    model.poly_uniform.data.buffer
+  );
+
+  const renderpass = encoder.beginRenderPass({
+    label: "Circle Append Anno",
     colorAttachments: [
       {
         view: model.an_texture_view,
@@ -523,48 +566,49 @@ function onCircleTest(model: Model, encoder: GPUCommandEncoder) {
 
   renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    128 * model.poly_uniform.aligned_size,
+    dataIdx * model.poly_uniform.aligned_size,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
 }
 
-function onRectangleTest(model: Model, encoder: GPUCommandEncoder) {
-  const x0 = model.clientWidth / 4 - 50;
-  const y0 = model.clientHeight / 4 - 50;
-  const x1 = model.clientWidth / 2 + 50;
-  const y1 = model.clientHeight / 2 + 50;
-  const r = 0.1;
-  const g = 0.1;
-  const b = 0;
+function onCircleReplaceAnno(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  const x0 = model.renderPassDataBuffer.x0[dataIdx];
+  const y0 = model.renderPassDataBuffer.y0[dataIdx];
+  const r = model.renderPassDataBuffer.red[dataIdx];
+  const g = model.renderPassDataBuffer.green[dataIdx];
+  const b = model.renderPassDataBuffer.blue[dataIdx];
 
   model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_pos(1, x1, y1);
-
   model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(2);
+  model.poly_uniform.set_line_width(1);
+  model.poly_uniform.set_radius(model.marker_radius);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    129 * model.poly_uniform.aligned_size,
+    dataIdx * model.poly_uniform.aligned_size,
     model.poly_uniform.data.buffer
   );
 
   const renderpass = encoder.beginRenderPass({
-    label: "Rectangle Test",
+    label: "Circle Replace Anno",
     colorAttachments: [
       {
         view: model.an_texture_view,
-        //clearValue: [0, 0, 0, 0],
-        loadOp: "load" as GPULoadOp,
+        clearValue: [0, 0, 0, 0],
+        loadOp: "clear" as GPULoadOp,
         storeOp: "store" as GPUStoreOp,
       },
     ],
   });
 
-  renderpass.setPipeline(model.rectangle_pipeline);
+  renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    129 * model.poly_uniform.aligned_size,
+    dataIdx * model.poly_uniform.aligned_size,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();

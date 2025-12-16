@@ -64,6 +64,7 @@ export interface Model {
   last_tool: number; //used to index into toolhandlers. See tool.ts
   is_drawing: boolean;
   is_navigating: boolean;
+  is_navPreviewSet: boolean;
   nav_pt: Float32Array;
   pts: Float32Array;
   num_pts: number;
@@ -176,6 +177,7 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     last_tool: 0,
     is_drawing: false,
     is_navigating: false,
+    is_navPreviewSet: false,
     nav_pt: new Float32Array(2),
     pts: new Float32Array(32),
     num_pts: 0,

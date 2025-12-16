@@ -402,6 +402,7 @@ function pan_start(model: Model) {
 
   // center view and zoom out
   model.is_navigating = true;
+  model.is_navPreviewSet = false;
   const [newZoom, newOffsetX, newOffsetY] = homeView(0.5, model);
   model.zoom = newZoom;
   model.texture_offset_x = newOffsetX;
@@ -420,7 +421,7 @@ function pan_start(model: Model) {
   const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
 
   model.renderPassBuffer.push(
-    RenderPassLookup["rectangle-anno"],
+    RenderPassLookup["rectangle-replace-anno"],
     model.renderPassDataBuffer.push(
       model.clientWidth * 0.5 - halfZoomedViewportWidth, //left
       model.clientHeight * 0.5 - halfZoomedViewportHeight, //top
@@ -451,6 +452,7 @@ function pan_stop(model: Model, viewportX: number, viewportY: number) {
 
     // revert zoom/tool selection
     model.is_navigating = false;
+    model.is_navPreviewSet = false;
     model.zoom = model.zoom_last;
     model.curr_tool = model.last_tool;
 
@@ -459,21 +461,38 @@ function pan_stop(model: Model, viewportX: number, viewportY: number) {
 
     model.renderPassBuffer.push(RenderPassLookup["clear-anno"], -1);
   } else {
-    // update nav point
+    // update nav point, set preview
     model.nav_pt[0] = viewportX;
     model.nav_pt[1] = viewportY;
+    model.is_navPreviewSet = true;
 
     // draw rectangle the size of texture over viewport centered on viewport cursor pos
     const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
     const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
 
     model.renderPassBuffer.push(
-      RenderPassLookup["rectangle-anno"],
+      RenderPassLookup["rectangle-replace-anno"],
       model.renderPassDataBuffer.push(
         model.nav_pt[0] - halfZoomedViewportWidth, //left
         model.nav_pt[1] - halfZoomedViewportHeight, //top
         model.nav_pt[0] + halfZoomedViewportWidth, //right
         model.nav_pt[1] + halfZoomedViewportHeight, //bottom
+        -1,
+        -1,
+        0,
+        0,
+        0
+      )
+    );
+
+    // draw cirlce marker
+    model.renderPassBuffer.push(
+      RenderPassLookup["circle-append-anno"],
+      model.renderPassDataBuffer.push(
+        model.nav_pt[0],
+        model.nav_pt[1],
+        -1,
+        -1,
         -1,
         -1,
         0,
@@ -489,20 +508,71 @@ function pan_hover(model: Model, viewportX: number, viewportY: number) {
   const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
   const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
 
-  model.renderPassBuffer.push(
-    RenderPassLookup["rectangle-anno"],
-    model.renderPassDataBuffer.push(
-      viewportX - halfZoomedViewportWidth, //left
-      viewportY - halfZoomedViewportHeight, //top
-      viewportX + halfZoomedViewportWidth, //right
-      viewportY + halfZoomedViewportHeight, //bottom
-      -1,
-      -1,
-      0.1,
-      0.4,
-      0.8
-    )
-  );
+  if (model.is_navPreviewSet) {
+    //if we have a preview set, draw that rect
+    model.renderPassBuffer.push(
+      RenderPassLookup["rectangle-replace-anno"],
+      model.renderPassDataBuffer.push(
+        model.nav_pt[0] - halfZoomedViewportWidth, //left
+        model.nav_pt[1] - halfZoomedViewportHeight, //top
+        model.nav_pt[0] + halfZoomedViewportWidth, //right
+        model.nav_pt[1] + halfZoomedViewportHeight, //bottom
+        -1,
+        -1,
+        0,
+        0,
+        0
+      )
+    );
+
+    // draw cirlce marker
+    model.renderPassBuffer.push(
+      RenderPassLookup["circle-append-anno"],
+      model.renderPassDataBuffer.push(
+        model.nav_pt[0],
+        model.nav_pt[1],
+        -1,
+        -1,
+        -1,
+        -1,
+        0,
+        0,
+        0
+      )
+    );
+
+    // draw preview rect centered on pointer
+    model.renderPassBuffer.push(
+      RenderPassLookup["rectangle-append-anno"],
+      model.renderPassDataBuffer.push(
+        viewportX - halfZoomedViewportWidth, //left
+        viewportY - halfZoomedViewportHeight, //top
+        viewportX + halfZoomedViewportWidth, //right
+        viewportY + halfZoomedViewportHeight, //bottom
+        -1,
+        -1,
+        0.1,
+        0.4,
+        0.8
+      )
+    );
+  } else {
+    // draw preview rect centered on pointer
+    model.renderPassBuffer.push(
+      RenderPassLookup["rectangle-replace-anno"],
+      model.renderPassDataBuffer.push(
+        viewportX - halfZoomedViewportWidth, //left
+        viewportY - halfZoomedViewportHeight, //top
+        viewportX + halfZoomedViewportWidth, //right
+        viewportY + halfZoomedViewportHeight, //bottom
+        -1,
+        -1,
+        0.1,
+        0.4,
+        0.8
+      )
+    );
+  }
 }
 
 /* Zoom */
