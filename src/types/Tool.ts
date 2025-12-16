@@ -457,7 +457,11 @@ function pan_stop(model: Model, viewportX: number, viewportY: number) {
 
     model.renderPassBuffer.push(RenderPassLookup["clear-anno"], -1);
   } else {
-    //draw rectangle the size of texture over viewport centered on viewport cursor pos
+    // update nav point
+    model.nav_pt[0] = viewportX;
+    model.nav_pt[1] = viewportY;
+
+    // draw rectangle the size of texture over viewport centered on viewport cursor pos
     const halfZoomedViewportWidth = (model.clientWidth * model.zoom) / 2;
     const halfZoomedViewportHeight = (model.clientHeight * model.zoom) / 2;
 
