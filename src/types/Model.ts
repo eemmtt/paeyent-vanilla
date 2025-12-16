@@ -77,6 +77,7 @@ export interface Model {
   texture_offset_y: number; //in css px
   texture_offset_last_x: number; //in css px
   texture_offset_last_y: number; //in css px
+  marker_radius: number;
 
   /* menu state */
   menu_container: Element;
@@ -188,6 +189,7 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     texture_offset_y: 0,
     texture_offset_last_x: 0,
     texture_offset_last_y: 0,
+    marker_radius: 15,
   };
 
   // these handlers get initialized in main()
