@@ -281,52 +281,24 @@ function updateHomeView(model: Model) {
     ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //cancel nav tool
   }
 
-  model.zoom = 1.0;
-  model.texture_offset_x = 0;
-  model.texture_offset_y = 0;
-  model.composite_uniform.set_texture_offset(0, 0);
-  model.composite_uniform.set_zoom(1.0);
+  const targetZoom = 0.96;
+  const textureCssWidth = model.bg_texture.width / model.dpr;
+  const textureCssHeight = model.bg_texture.height / model.dpr;
 
-  model.renderPassBuffer.push(
-    0, // clear fg
-    -1 // no data
-  );
-}
+  const scaleX = model.clientWidth / textureCssWidth;
+  const scaleY = model.clientHeight / textureCssHeight;
 
-function updateZoomIn(model: Model) {
-  model.zoom += 0.1;
-  model.composite_uniform.addZoom(0.1);
+  const newZoom = targetZoom * Math.min(scaleX, scaleY);
 
-  model.renderPassBuffer.push(
-    0, // clear fg
-    -1 // no data
-  );
-}
+  const centeredX = (model.clientWidth - textureCssWidth) / 2;
+  const centeredY = (model.clientHeight - textureCssHeight) / 2;
 
-function updateZoomOut(model: Model) {
-  // float comparison, add 0.01 tolerance
-  const newZoom = model.zoom - 0.1 > 0.01 ? model.zoom - 0.1 : 0.1;
   model.zoom = newZoom;
+  model.texture_offset_x = centeredX;
+  model.texture_offset_y = centeredY;
+  model.composite_uniform.set_texture_offset(centeredX, centeredY);
   model.composite_uniform.set_zoom(newZoom);
 
-  model.renderPassBuffer.push(
-    0, // clear fg
-    -1 // no data
-  );
-}
-
-function updatePanX(model: Model) {
-  model.texture_offset_x += 20;
-  model.composite_uniform.addOffsetX(20 * model.dpr);
-  model.renderPassBuffer.push(
-    0, // clear fg
-    -1 // no data
-  );
-}
-
-function updatePanY(model: Model) {
-  model.texture_offset_y += 20;
-  model.composite_uniform.addOffsetY(20 * model.dpr);
   model.renderPassBuffer.push(
     0, // clear fg
     -1 // no data
