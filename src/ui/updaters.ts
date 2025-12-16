@@ -281,17 +281,7 @@ function updateHomeView(model: Model) {
     ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //cancel nav tool
   }
 
-  const targetZoom = 0.96;
-  const textureCssWidth = model.bg_texture.width / model.dpr;
-  const textureCssHeight = model.bg_texture.height / model.dpr;
-
-  const scaleX = model.clientWidth / textureCssWidth;
-  const scaleY = model.clientHeight / textureCssHeight;
-
-  const newZoom = targetZoom * Math.min(scaleX, scaleY);
-
-  const centeredX = (model.clientWidth - textureCssWidth) / 2;
-  const centeredY = (model.clientHeight - textureCssHeight) / 2;
+  const [newZoom, centeredX, centeredY] = homeView(0.96, model);
 
   model.zoom = newZoom;
   model.texture_offset_x = centeredX;
@@ -365,4 +355,21 @@ function modalBodyToEndSession(model: Model) {
     model.modal_share_button,
     model.modal_about_section
   );
+}
+
+export function homeView(
+  targetZoom: number,
+  model: Model
+): [number, number, number] {
+  const textureCssWidth = model.bg_texture.width / model.dpr;
+  const textureCssHeight = model.bg_texture.height / model.dpr;
+
+  const scaleX = model.clientWidth / textureCssWidth;
+  const scaleY = model.clientHeight / textureCssHeight;
+
+  const newZoom = targetZoom * Math.min(scaleX, scaleY);
+
+  const centeredX = (model.clientWidth - textureCssWidth) / 2;
+  const centeredY = (model.clientHeight - textureCssHeight) / 2;
+  return [newZoom, centeredX, centeredY];
 }

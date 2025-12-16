@@ -1,4 +1,5 @@
 import { RenderPassLookup } from "../graphics/wgpu_render";
+import { homeView } from "../ui/updaters";
 import { type Model } from "./Model";
 
 const PT_STRIDE = 2;
@@ -401,11 +402,12 @@ function pan_start(model: Model) {
 
   // center view and zoom out
   model.is_navigating = true;
-  model.zoom = 0.3;
-  model.texture_offset_x = 0;
-  model.texture_offset_y = 0;
-  model.nav_pt[0] = model.clientWidth / 2;
-  model.nav_pt[1] = model.clientHeight / 2;
+  const [newZoom, newOffsetX, newOffsetY] = homeView(0.5, model);
+  model.zoom = newZoom;
+  model.texture_offset_x = newOffsetX;
+  model.texture_offset_y = newOffsetY;
+  model.nav_pt[0] = newOffsetX + (model.bg_texture.width / 2) * newZoom;
+  model.nav_pt[1] = newOffsetY + (model.bg_texture.height / 2) * newZoom;
 
   model.canvas.addEventListener("pointermove", model.onPointerMove);
   model.canvas.addEventListener(
@@ -435,16 +437,16 @@ function pan_start(model: Model) {
 
 function pan_stop(model: Model, viewportX: number, viewportY: number) {
   //check if pdown was in marker
-  const radius_squared = model.marker_radius * model.marker_radius;
+  const radius_squared = model.marker_radius ** 2;
   const dist_squared =
     (viewportX - model.nav_pt[0]) ** 2 + (viewportY - model.nav_pt[1]) ** 2;
   if (dist_squared <= radius_squared) {
     // calculate new offset
     model.texture_offset_x =
-      (model.clientWidth * 0.5 - model.nav_pt[0]) *
+      (model.clientWidth * 0.5 - model.texture_offset_x - model.nav_pt[0]) *
       (model.zoom_last / model.zoom);
     model.texture_offset_y =
-      (model.clientHeight * 0.5 - model.nav_pt[1]) *
+      (model.clientHeight * 0.5 - model.texture_offset_y - model.nav_pt[1]) *
       (model.zoom_last / model.zoom);
 
     // revert zoom/tool selection

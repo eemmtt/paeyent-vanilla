@@ -28,7 +28,7 @@ export class CompositeUniform {
 
     this.data[this.offset_textureOffset_x] = 0; //in dev px
     this.data[this.offset_textureOffset_y] = 0; //in dev px
-    this.data[this.offset_zoom] = 1.0;
+    this.data[this.offset_zoom] = 0.96; //target zoom
     this.data[this.offset_textureWidth] = canvas.width; //in dev px
     this.data[this.offset_textureHeight] = canvas.height; //in dev px
     this.data[this.offset_viewportWidth] = canvas.width; //in dev px
