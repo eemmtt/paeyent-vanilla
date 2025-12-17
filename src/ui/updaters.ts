@@ -171,14 +171,15 @@ function updateButtonLine(model: Model) {
 }
 
 function updateButtonBrush(model: Model) {
-  if (model.curr_tool === 3) {
-    //3 is brush tool idx
-    return;
-  }
+  // if (model.curr_tool === ToolLookup["brush"]) {
+  //   //3 is brush tool idx
+  //   return;
+  // }
 
   ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
-  model.curr_tool = 3; //2 is brush tool idx
-  console.log("Brush tool selected");
+  // model.curr_tool = 3; //2 is brush tool idx
+  // console.log("Brush tool selected");
+  console.warn("Brush tool not implemented");
 }
 
 function updateButtonFan(model: Model) {

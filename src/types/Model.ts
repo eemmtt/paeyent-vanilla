@@ -114,6 +114,9 @@ export interface Model {
   fan_button: HTMLButtonElement;
   line_button: HTMLButtonElement;
   brush_button: HTMLButtonElement;
+  home_button: HTMLButtonElement;
+  pan_button: HTMLButtonElement;
+  zoom_button: HTMLButtonElement;
 
   is_modal_open: boolean;
 

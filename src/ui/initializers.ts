@@ -53,6 +53,23 @@ export function menu_build(
   button_container.appendChild(fan_button);
   button_container.appendChild(line_button);
 
+  /* navigation buttons */
+  const home_button = document.createElement("button");
+  home_button.innerHTML = "<u>H</u>omef";
+  home_button.dataset.home = "true";
+
+  const pan_button = document.createElement("button");
+  pan_button.innerHTML = "<u>P</u>an";
+  pan_button.dataset.pan = "true";
+
+  const zoom_button = document.createElement("button");
+  zoom_button.innerHTML = "<u>Z</u>oom";
+  zoom_button.dataset.zoom = "true";
+
+  button_container.appendChild(home_button);
+  button_container.appendChild(pan_button);
+  button_container.appendChild(zoom_button);
+
   /* modal container */
   // is effectively the modal background
   // contains: content
@@ -165,6 +182,9 @@ export function menu_build(
     fan_button,
     line_button,
     brush_button,
+    home_button,
+    pan_button,
+    zoom_button,
     is_modal_open: false,
     UIEventQueue: [],
     color_picker,

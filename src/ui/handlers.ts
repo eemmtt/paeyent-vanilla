@@ -80,6 +80,36 @@ export function onLineButton(event: Event, model: Model) {
   }
 }
 
+export function onHomeButton(event: Event, model: Model) {
+  if (event.target === model.home_button) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["home-view"],
+      -1 // No data
+    );
+  }
+}
+
+export function onPanButton(event: Event, model: Model) {
+  if (event.target === model.pan_button) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["button-pan"],
+      -1 // No data
+    );
+  }
+}
+
+export function onZoomButton(event: Event, model: Model) {
+  if (event.target === model.zoom_button) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["button-zoom"],
+      -1 // No data
+    );
+  }
+}
+
 export function onModalContainer(event: Event, model: Model) {
   if (event.target === model.modal_container) {
     model.eventBuffer.push(

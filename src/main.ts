@@ -8,6 +8,7 @@ import {
   onConstraintTimeMinutes,
   onConstraintTimeSeconds,
   onFanButton,
+  onHomeButton,
   onLineButton,
   onMenuButton,
   onModalAboutSection,
@@ -17,6 +18,7 @@ import {
   onModalSaveButton,
   onModalShareButton,
   onModalStartSessionButton,
+  onPanButton,
   onRadioColorpickerTypeHsv,
   onRadioColorpickerTypeRgb,
   onRadioConstraintTypeActions,
@@ -27,6 +29,7 @@ import {
   onSliderBlue,
   onSliderGreen,
   onSliderRed,
+  onZoomButton,
 } from "./ui/handlers";
 import type { PointerType } from "./types/PaeyentEvent";
 import {
@@ -373,6 +376,15 @@ async function main() {
   );
   model.line_button.addEventListener("pointerdown", (e) =>
     onLineButton(e, model)
+  );
+  model.home_button.addEventListener("pointerdown", (e) =>
+    onHomeButton(e, model)
+  );
+  model.pan_button.addEventListener("pointerdown", (e) =>
+    onPanButton(e, model)
+  );
+  model.zoom_button.addEventListener("pointerdown", (e) =>
+    onZoomButton(e, model)
   );
 
   /* modal events */
