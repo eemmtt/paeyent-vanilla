@@ -380,6 +380,7 @@ function pan_pointermove(model: Model, dataIdx: number) {
 function pan_cancel(model: Model, _dataIdx: number) {
   // revert to previous values
   model.is_navigating = false;
+  model.is_navPreviewSet = false;
   model.num_nav_pts = 0;
   model.zoom = model.zoom_last;
   model.texture_offset_x = model.texture_offset_last_x;
@@ -408,10 +409,8 @@ function pan_start(model: Model) {
   model.texture_offset_x = newOffsetX; //usually 0 ??
   model.texture_offset_y = newOffsetY;
 
-  const scaledOffsetX =
-    model.texture_offset_last_x * (newZoom / model.zoom_last);
-  const scaledOffsetY =
-    model.texture_offset_last_y * (newZoom / model.zoom_last);
+  const scaledOffsetX = model.texture_offset_last_x * newZoom;
+  const scaledOffsetY = model.texture_offset_last_y * newZoom;
 
   // record previous offset
   model.nav_pts[0] = model.clientWidth / 2 - scaledOffsetX;
@@ -467,14 +466,13 @@ function pan_stop(model: Model, viewportX: number, viewportY: number) {
   const currPtY = model.nav_pts[2 * (model.num_nav_pts - 1) + 1];
   const dist_squared = (viewportX - currPtX) ** 2 + (viewportY - currPtY) ** 2;
   if (dist_squared <= radius_squared) {
-    const offsetFromV1Center_X = currPtX - model.clientWidth / 2;
-    const offsetFromV1Center_Y = currPtY - model.clientHeight / 2;
-    const scaleRatio = model.zoom_last / model.zoom;
+    const offsetFromCenterX = currPtX - model.clientWidth / 2;
+    const offsetFromCenterY = currPtY - model.clientHeight / 2;
 
-    model.texture_offset_x = -offsetFromV1Center_X * scaleRatio;
-    model.texture_offset_y = -offsetFromV1Center_Y * scaleRatio;
+    model.texture_offset_x = -offsetFromCenterX / model.zoom;
+    model.texture_offset_y = -offsetFromCenterY / model.zoom;
 
-    // revert zoom/tool selectionp
+    // revert zoom/tool selection
     model.is_navigating = false;
     model.is_navPreviewSet = false;
     model.zoom = model.zoom_last;
@@ -675,27 +673,30 @@ function zoom_pointermove(model: Model, dataIdx: number) {
     console.warn(`zoom_pointermove: invalid dataIdx ${dataIdx}`);
     return;
   }
-  zoom_hover(
-    model,
-    model.eventDataBuffer.x[dataIdx],
-    model.eventDataBuffer.y[dataIdx]
-  );
+  if (model.is_navigating) {
+    zoom_hover(
+      model,
+      model.eventDataBuffer.x[dataIdx],
+      model.eventDataBuffer.y[dataIdx]
+    );
+  }
 }
 function zoom_cancel(model: Model, _dataIdx: number) {
   // revert to previous values
   model.is_navigating = false;
+  model.is_navPreviewSet = false;
+  model.num_nav_pts = 0;
   model.zoom = model.zoom_last;
   model.texture_offset_x = model.texture_offset_last_x;
   model.texture_offset_y = model.texture_offset_last_y;
   model.curr_tool = model.last_tool;
 
-  model.canvas.removeEventListener("pointermove", model.onPointerMove);
-  model.canvas.removeEventListener("pointerup", model.onPointerUp);
-
   model.renderPassBuffer.push(
     RenderPassLookup["clear-anno"],
     -1 // no data
   );
+
+  model.canvas.removeEventListener("pointermove", model.onPointerMove);
 }
 
 function zoom_start(model: Model) {
@@ -712,25 +713,24 @@ function zoom_start(model: Model) {
   model.texture_offset_x = newOffsetX;
   model.texture_offset_y = newOffsetY;
 
-  model.canvas.addEventListener("pointermove", model.onPointerMove);
+  // record previous offset
+  const scaledOffsetX = model.texture_offset_last_x * newZoom;
+  const scaledOffsetY = model.texture_offset_last_y * newZoom;
 
-  //draw circle enscribed in rectangle outlining the most recent pre-nav view
-  const halfZoomedViewportWidth = model.clientWidth * model.zoom * 0.5;
-  const halfZoomedViewportHeight = model.clientHeight * model.zoom * 0.5;
-  model.nav_pts[0] =
-    newOffsetX +
-    model.clientWidth * 0.5 -
-    model.texture_offset_last_x * model.zoom;
-  model.nav_pts[1] =
-    newOffsetY +
-    model.clientHeight * 0.5 -
-    model.texture_offset_last_y * model.zoom;
+  model.nav_pts[0] = model.clientWidth / 2 - scaledOffsetX;
+  model.nav_pts[1] = model.clientHeight / 2 - scaledOffsetY;
   model.num_nav_pts = 1;
+
   const radius =
     (Math.min(model.bg_texture.width, model.bg_texture.height) *
-      model.zoom *
+      (newZoom / model.zoom_last) *
       0.5) /
     model.dpr; // in css pixels
+
+  const halfZoomedViewportWidth =
+    (model.clientWidth * (model.zoom / model.zoom_last)) / 2;
+  const halfZoomedViewportHeight =
+    (model.clientHeight * (model.zoom / model.zoom_last)) / 2;
 
   // preview rectangle
   model.renderPassBuffer.push(
@@ -779,6 +779,8 @@ function zoom_start(model: Model) {
       0
     )
   );
+
+  model.canvas.addEventListener("pointermove", model.onPointerMove);
 }
 
 function zoom_stop(model: Model, viewportX: number, viewportY: number) {
@@ -786,28 +788,28 @@ function zoom_stop(model: Model, viewportX: number, viewportY: number) {
   const radius_squared = model.marker_radius ** 2;
   const dist_squared =
     (viewportX - model.nav_pts[0]) ** 2 + (viewportY - model.nav_pts[1]) ** 2;
+
   if (dist_squared <= radius_squared) {
     // calculate new zoom from difference in radii
-    if (model.num_nav_pts === 2) {
-      const startRadius =
-        (Math.min(model.bg_texture.width, model.bg_texture.height) *
-          model.zoom *
-          0.5) /
-        model.dpr; // in css pixels
+    const startRadius =
+      (Math.min(model.bg_texture.width, model.bg_texture.height) *
+        (model.zoom / model.zoom_last) *
+        0.5) /
+      model.dpr; // in css pixels
 
-      const endRadius = Math.sqrt(
-        (model.nav_pts[2] - model.nav_pts[0]) ** 2 +
-          (model.nav_pts[3] - model.nav_pts[1]) ** 2
-      );
-      model.zoom = model.zoom_last * (endRadius / startRadius);
-    } else {
-      model.zoom = model.zoom_last;
-    }
+    const currPtX = model.nav_pts[2 * (model.num_nav_pts - 1) + 0];
+    const currPtY = model.nav_pts[2 * (model.num_nav_pts - 1) + 1];
+    const endRadius = Math.sqrt(
+      (currPtX - model.nav_pts[0]) ** 2 + (currPtY - model.nav_pts[1]) ** 2
+    );
+    const newZoom = model.zoom_last * (startRadius / endRadius);
 
     // revert tool selection and offset
     model.is_navigating = false;
     model.is_navPreviewSet = false;
+    model.num_nav_pts = 0;
     model.curr_tool = model.last_tool;
+    model.zoom = newZoom;
     model.texture_offset_x = model.texture_offset_last_x;
     model.texture_offset_y = model.texture_offset_last_y;
 
@@ -887,29 +889,33 @@ function zoom_stop(model: Model, viewportX: number, viewportY: number) {
 }
 
 function zoom_hover(model: Model, viewportX: number, viewportY: number) {
-  if (model.is_navPreviewSet) {
+  if (model.is_navPreviewSet && model.num_nav_pts === 2) {
     // draw rectangle proportional to the size of viewport centered on texture_offset
     // with min axis == 2 * radius
-    const radius = Math.sqrt(
+
+    const startRadius =
+      (Math.min(model.bg_texture.width, model.bg_texture.height) *
+        (model.zoom / model.zoom_last) *
+        0.5) /
+      model.dpr; // in css pixels
+
+    const currRadius = Math.sqrt(
       (model.nav_pts[2] - model.nav_pts[0]) ** 2 +
         (model.nav_pts[3] - model.nav_pts[1]) ** 2
     );
-    const viewportWidthByHeight = model.clientWidth / model.clientHeight;
-    const viewportHeightByWidth = model.clientHeight / model.clientWidth;
-    let halfViewportWidth = radius;
-    let halfViewportHeight = radius * viewportHeightByWidth;
-    if (model.clientWidth > model.clientHeight) {
-      halfViewportWidth = radius * viewportWidthByHeight;
-      halfViewportHeight = radius;
-    }
+
+    const radiiRatio = currRadius / startRadius;
+    const zoomRatio = model.zoom / model.zoom_last;
+    const scaledViewportWidth = model.clientWidth * zoomRatio * radiiRatio;
+    const scaledViewporHeight = model.clientHeight * zoomRatio * radiiRatio;
 
     model.renderPassBuffer.push(
       RenderPassLookup["rectangle-replace-anno"],
       model.renderPassDataBuffer.push(
-        model.nav_pts[0] - halfViewportWidth, //left
-        model.nav_pts[1] - halfViewportHeight, //top
-        model.nav_pts[0] + halfViewportWidth, //right
-        model.nav_pts[1] + halfViewportHeight, //bottom
+        model.nav_pts[0] - scaledViewportWidth * 0.5, //left
+        model.nav_pts[1] - scaledViewporHeight * 0.5, //top
+        model.nav_pts[0] + scaledViewportWidth * 0.5, //right
+        model.nav_pts[1] + scaledViewporHeight * 0.5, //bottom
         -1,
         -1,
         0,
@@ -923,7 +929,7 @@ function zoom_hover(model: Model, viewportX: number, viewportY: number) {
       model.renderPassDataBuffer.push(
         model.nav_pts[0],
         model.nav_pts[1],
-        radius,
+        currRadius,
         -1,
         -1,
         -1,
