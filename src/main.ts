@@ -103,7 +103,7 @@ async function main() {
 
   // handle window resize events
   let resizeDebounceTimeout: number | null = null;
-  const RESIZE_DEBOUNCE_MS = 16;
+  const RESIZE_DEBOUNCE_MS = 500;
   const handleResize = (entries: ResizeObserverEntry[]) => {
     for (const entry of entries) {
       if (entry.target !== model.canvas) {
@@ -208,8 +208,6 @@ async function main() {
   // if we need device-pixel-content-box that responds to zoom on non-full width/height element
   // observer.observe(model.canvas, { box: "device-pixel-content-box" });
   observer.observe(model.canvas, { box: "content-box" });
-
-  //window.addEventListener("resize", (e) => {onWindowResize(e, model)});
 
   // adding a timeout to mainLoop complicated matters
   // and added the requirement of cleaning up the loop state
