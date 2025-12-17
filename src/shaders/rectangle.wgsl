@@ -1,6 +1,6 @@
 struct PolyData {
-    pos_a: vec2<f32>,
-    pos_b: vec2<f32>,
+    pos_a: vec2<f32>, //left, top
+    pos_b: vec2<f32>, //right, bottom
     pos_c: vec2<f32>,
     pos_d: vec2<f32>,
     rgba: vec4<f32>,     
@@ -22,10 +22,10 @@ struct VertexOutput {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput{
     var output: VertexOutput;
-    let top = poly.pos_a.y;
-    let bottom = poly.pos_b.y;
-    let left = poly.pos_a.x;
-    let right = poly.pos_b.x;
+    let top = poly.pos_a.y - poly.line_width;
+    let bottom = poly.pos_b.y + poly.line_width;
+    let left = poly.pos_a.x - poly.line_width;
+    let right = poly.pos_b.x + poly.line_width;
     let half_width = (right - left) * 0.5;
     let half_height = (bottom - top) * 0.5;
     let center = vec2<f32>(half_width, half_height);
@@ -48,12 +48,12 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput{
     );
 
     let css_offsets = array(
-        poly.pos_a,     // 1
+        vec2<f32>(left, top),     // 1
         vec2<f32>(left, bottom),    // 2
         vec2<f32>(right, top),      // 3
         vec2<f32>(right, top),      // 3
         vec2<f32>(left, bottom),    // 2
-        poly.pos_b      // 4
+        vec2<f32>(right, bottom)      // 4
     );
 
     output.position = vec4<f32>(positions[vertex_index], 0, 1.0);
@@ -72,6 +72,6 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
         discard;
     }
     return poly.rgba;
-    
+
     //return select(vec4<f32>(0,0,0,0), poly.rgba, on_edge);
 }
