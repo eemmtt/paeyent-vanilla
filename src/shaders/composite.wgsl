@@ -61,13 +61,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     // composite fg over bg
     var aggregate_texture_color = fg.rgb * fg.a + bg.rgb * (1.0 - fg.a);
 
-    // pixel grid overlay for high zoom levels
-    let grid_pos = texture_pos + 0.5;
-    let dist_to_edge = min(fract(grid_pos), 1.0 - fract(grid_pos));
-    let on_grid = f32(dist_to_edge.x < u.grid_line_width || dist_to_edge.y < u.grid_line_width);
-    let grid_visible = f32(u.zoom >= u.grid_min_zoom);
-
-    aggregate_texture_color = mix(aggregate_texture_color, u.grid_color, u.grid_alpha * on_grid * grid_visible);
+    // composite aggregate texture over background
     let background_and_agg_texture_mix = vec4<f32>(
         mix(u.background_color, aggregate_texture_color, f32(in_texture)),
         1.0
