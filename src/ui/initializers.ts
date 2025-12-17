@@ -55,7 +55,7 @@ export function menu_build(
 
   /* navigation buttons */
   const home_button = document.createElement("button");
-  home_button.innerHTML = "<u>H</u>omef";
+  home_button.innerHTML = "<u>H</u>ome";
   home_button.dataset.home = "true";
 
   const pan_button = document.createElement("button");
