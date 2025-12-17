@@ -65,7 +65,8 @@ export interface Model {
   is_drawing: boolean;
   is_navigating: boolean;
   is_navPreviewSet: boolean;
-  nav_pt: Float32Array;
+  nav_pts: Float32Array;
+  num_nav_pts: number;
   pts: Float32Array;
   num_pts: number;
   color: Float32Array;
@@ -178,7 +179,8 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     is_drawing: false,
     is_navigating: false,
     is_navPreviewSet: false,
-    nav_pt: new Float32Array(2),
+    nav_pts: new Float32Array(4),
+    num_nav_pts: 0,
     pts: new Float32Array(32),
     num_pts: 0,
     color: init_color,

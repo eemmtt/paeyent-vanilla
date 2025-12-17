@@ -303,6 +303,8 @@ function updateButtonZoom(model: Model) {
   ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
   model.last_tool = model.curr_tool;
   model.curr_tool = ToolLookup["zoom"];
+  ToolUpdaters[ToolLookup["zoom"] * ToolStride + 0](model, -1); //Call zoom_pointerdown
+
   console.log("Zoom tool selected");
 }
 

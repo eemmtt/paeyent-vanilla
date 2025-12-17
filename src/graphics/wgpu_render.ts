@@ -540,11 +540,12 @@ function onCircleAppendAnno(
   const r = model.renderPassDataBuffer.red[dataIdx];
   const g = model.renderPassDataBuffer.green[dataIdx];
   const b = model.renderPassDataBuffer.blue[dataIdx];
+  const radius = model.renderPassDataBuffer.x1[dataIdx]; //TODO: restructure RenderPassDataBuffer to de-hackify this
 
   model.poly_uniform.set_pos(0, x0, y0);
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_radius(model.marker_radius);
+  model.poly_uniform.set_radius(radius);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
@@ -582,11 +583,12 @@ function onCircleReplaceAnno(
   const r = model.renderPassDataBuffer.red[dataIdx];
   const g = model.renderPassDataBuffer.green[dataIdx];
   const b = model.renderPassDataBuffer.blue[dataIdx];
+  const radius = model.renderPassDataBuffer.x1[dataIdx]; //TODO: restructure RenderPassDataBuffer to de-hackify this
 
   model.poly_uniform.set_pos(0, x0, y0);
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_radius(model.marker_radius);
+  model.poly_uniform.set_radius(radius);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
