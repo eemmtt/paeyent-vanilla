@@ -230,6 +230,46 @@ export function onRadioScratchNo(event: Event, model: Model) {
   }
 }
 
+export function onRadioImageDimensionsAuto(event: Event, model: Model) {
+  if (event.target === model.radio_image_dimensions_auto) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["radio-image-dimensions-auto"],
+      -1 // No data
+    );
+  }
+}
+
+export function onRadioImageDimensionsCustom(event: Event, model: Model) {
+  if (event.target === model.radio_image_dimensions_custom) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["radio-image-dimensions-custom"],
+      -1 // No data
+    );
+  }
+}
+
+export function onImageDimensionsWidth(event: Event, model: Model) {
+  if (event.target === model.image_dimensions_width) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["input-image-dimensions-width"],
+      -1 // No data
+    );
+  }
+}
+
+export function onImageDimensionsHeight(event: Event, model: Model) {
+  if (event.target === model.image_dimensions_height) {
+    model.eventBuffer.push(
+      1, // UIEvent
+      UIUpdaterLookup["input-image-dimensions-height"],
+      -1 // No data
+    );
+  }
+}
+
 export function onModalStartSessionButton(event: Event, model: Model) {
   if (event.target === model.modal_start_session_button) {
     model.eventBuffer.push(

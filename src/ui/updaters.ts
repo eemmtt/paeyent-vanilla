@@ -20,9 +20,13 @@ export type UIEventType =
   | "radio-colorpicker-type-hsv"
   | "radio-scratch-yes"
   | "radio-scratch-no"
+  | "radio-image-dimensions-auto"
+  | "radio-image-dimensions-custom"
   | "input-constraint-time-minutes"
   | "input-constraint-time-seconds"
   | "input-constraint-actions-count"
+  | "input-image-dimensions-width"
+  | "input-image-dimensions-height"
   | "input-slider-red"
   | "input-slider-green"
   | "input-slider-blue"
@@ -50,15 +54,19 @@ export const UIUpdaterLookup = {
   "radio-colorpicker-type-hsv": 15,
   "radio-scratch-yes": 16,
   "radio-scratch-no": 17,
-  "input-constraint-time-minutes": 18,
-  "input-constraint-time-seconds": 19,
-  "input-constraint-actions-count": 20,
-  "input-slider-red": 21,
-  "input-slider-green": 22,
-  "input-slider-blue": 23,
-  "home-view": 24,
-  "button-zoom": 25,
-  "button-pan": 26,
+  "radio-image-dimensions-auto": 18,
+  "radio-image-dimensions-custom": 19,
+  "input-constraint-time-minutes": 20,
+  "input-constraint-time-seconds": 21,
+  "input-constraint-actions-count": 22,
+  "input-image-dimensions-width": 23,
+  "input-image-dimensions-height": 24,
+  "input-slider-red": 25,
+  "input-slider-green": 26,
+  "input-slider-blue": 27,
+  "home-view": 28,
+  "button-zoom": 29,
+  "button-pan": 30,
 } as const;
 
 export const UIUpdaters = [
@@ -80,9 +88,13 @@ export const UIUpdaters = [
   updateRadioColorpickerTypeHsv,
   updateRadioScratchYes,
   updateRadioScratchNo,
+  updateRadioImageDimensionsAuto,
+  updateRadioImageDimensionsCustom,
   updateInputTimeMinutes,
   updateInputTimeSeconds,
   updateInputActionsCount,
+  updateInputImageDimensionsWidth,
+  updateInputImageDimensionsHeight,
   updateSliderRed,
   updateSliderGreen,
   updateSliderBlue,
@@ -246,6 +258,20 @@ function updateRadioScratchNo(model: Model) {
   model.scratch_area = false;
 }
 
+function updateRadioImageDimensionsAuto(model: Model) {
+  model.radio_image_dimensions_auto.checked = true;
+  model.radio_image_dimensions_custom.checked = false;
+  model.image_dimensions_type = "auto";
+  model.image_dimensions_inputgroup.style.display = "none";
+}
+
+function updateRadioImageDimensionsCustom(model: Model) {
+  model.radio_image_dimensions_auto.checked = false;
+  model.radio_image_dimensions_custom.checked = true;
+  model.image_dimensions_type = "custom";
+  model.image_dimensions_inputgroup.style.display = "flex";
+}
+
 function updateInputTimeMinutes(model: Model) {
   model.constraint_time_minutes =
     model.constraint_type_time_minutes.valueAsNumber;
@@ -256,6 +282,14 @@ function updateInputTimeSeconds(model: Model) {
 }
 function updateInputActionsCount(model: Model) {
   model.constraint_actions = model.constraint_type_actions_count.valueAsNumber;
+}
+
+function updateInputImageDimensionsWidth(model: Model) {
+  model.image_width = model.image_dimensions_width.valueAsNumber;
+}
+
+function updateInputImageDimensionsHeight(model: Model) {
+  model.image_height = model.image_dimensions_height.valueAsNumber;
 }
 
 function updateSliderRed(model: Model) {

@@ -9,6 +9,8 @@ import {
   onConstraintTimeSeconds,
   onFanButton,
   onHomeButton,
+  onImageDimensionsHeight,
+  onImageDimensionsWidth,
   onLineButton,
   onMenuButton,
   onModalAboutSection,
@@ -24,6 +26,8 @@ import {
   onRadioConstraintTypeActions,
   onRadioConstraintTypeNone,
   onRadioConstraintTypeTime,
+  onRadioImageDimensionsAuto,
+  onRadioImageDimensionsCustom,
   onRadioScratchNo,
   onRadioScratchYes,
   onSliderBlue,
@@ -98,6 +102,7 @@ async function main() {
     constraint_type: "none",
     color_picker_type: "rgb",
     scratch_area: false,
+    image_dimensions_type: "auto",
   };
 
   const model = await model_init(options);
@@ -423,6 +428,18 @@ async function main() {
   );
   model.radio_scratch_no.addEventListener("change", (e) =>
     onRadioScratchNo(e, model)
+  );
+  model.radio_image_dimensions_auto.addEventListener("change", (e) =>
+    onRadioImageDimensionsAuto(e, model)
+  );
+  model.radio_image_dimensions_custom.addEventListener("change", (e) =>
+    onRadioImageDimensionsCustom(e, model)
+  );
+  model.image_dimensions_width.addEventListener("change", (e) =>
+    onImageDimensionsWidth(e, model)
+  );
+  model.image_dimensions_height.addEventListener("change", (e) =>
+    onImageDimensionsHeight(e, model)
   );
   model.modal_start_session_button.addEventListener("pointerdown", (e) =>
     onModalStartSessionButton(e, model)

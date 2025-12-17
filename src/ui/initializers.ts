@@ -123,6 +123,11 @@ export function menu_build(
     radio_colorpicker_type_hsv,
     radio_scratch_yes,
     radio_scratch_no,
+    radio_image_dimensions_auto,
+    radio_image_dimensions_custom,
+    image_dimensions_inputgroup,
+    image_dimensions_width,
+    image_dimensions_height,
     constraint_type_time_inputgroup,
     constraint_type_time_minutes,
     constraint_type_time_seconds,
@@ -173,6 +178,11 @@ export function menu_build(
     radio_colorpicker_type_hsv,
     radio_scratch_yes,
     radio_scratch_no,
+    radio_image_dimensions_auto,
+    radio_image_dimensions_custom,
+    image_dimensions_inputgroup,
+    image_dimensions_width,
+    image_dimensions_height,
     constraint_type_time_inputgroup,
     constraint_type_time_minutes,
     constraint_type_time_seconds,
@@ -205,6 +215,89 @@ function settings_build(session_settings: SessionSettings) {
 
   const form = document.createElement("form");
   form.className = "session-settings-form";
+
+  /* image dimensions */
+  const image_dimensions_group = document.createElement("div");
+  image_dimensions_group.className = "form-group";
+
+  const image_dimensions_group_label = document.createElement("label");
+  image_dimensions_group_label.textContent = "Image Dimensions:";
+  image_dimensions_group.appendChild(image_dimensions_group_label);
+
+  const image_dimensions_radio_container = document.createElement("div");
+  image_dimensions_radio_container.className = "radio-group";
+
+  // auto image dimensions
+  const image_dimensions_radio_auto_label = document.createElement("label");
+  image_dimensions_radio_auto_label.className = "radio-label";
+
+  const image_dimensions_auto_input = document.createElement("input");
+  image_dimensions_auto_input.type = "radio";
+  image_dimensions_auto_input.name = "image-dimensions";
+  image_dimensions_auto_input.value = "auto";
+  image_dimensions_auto_input.checked =
+    session_settings.image_dimensions_type === "auto";
+  image_dimensions_auto_input.dataset.auto = "true";
+
+  const image_dimensions_auto_text = document.createTextNode("Auto");
+
+  image_dimensions_radio_auto_label.appendChild(image_dimensions_auto_input);
+  image_dimensions_radio_auto_label.appendChild(image_dimensions_auto_text);
+
+  // custom image dimensions
+  const image_dimensions_radio_custom_label = document.createElement("label");
+  image_dimensions_radio_custom_label.className = "radio-label";
+
+  const image_dimensions_custom_input = document.createElement("input");
+  image_dimensions_custom_input.type = "radio";
+  image_dimensions_custom_input.name = "image-dimensions";
+  image_dimensions_custom_input.value = "custom";
+  image_dimensions_custom_input.checked =
+    session_settings.image_dimensions_type === "custom";
+  image_dimensions_custom_input.dataset.custom = "true";
+
+  const image_dimensions_custom_text = document.createTextNode("Custom");
+
+  image_dimensions_radio_custom_label.appendChild(image_dimensions_custom_input);
+  image_dimensions_radio_custom_label.appendChild(image_dimensions_custom_text);
+
+  // assemble image dimensions group
+  image_dimensions_radio_container.appendChild(image_dimensions_radio_auto_label);
+  image_dimensions_radio_container.appendChild(image_dimensions_radio_custom_label);
+  image_dimensions_group.appendChild(image_dimensions_radio_container);
+
+  // Custom dimensions inputs
+  const customDimensionsGroup = document.createElement("div");
+  customDimensionsGroup.className = "form-group constraint-inputs";
+  customDimensionsGroup.id = "custom-dimensions";
+  customDimensionsGroup.style.display =
+    session_settings.image_dimensions_type === "custom" ? "flex" : "none";
+
+  const widthLabel = document.createElement("label");
+  widthLabel.textContent = "Width:";
+  const widthInput = document.createElement("input");
+  widthInput.type = "number";
+  widthInput.id = "image-width";
+  widthInput.min = "1";
+  widthInput.value = String(session_settings.image_width ?? 800);
+  widthInput.dataset.width = "true";
+
+  const heightLabel = document.createElement("label");
+  heightLabel.textContent = "Height:";
+  const heightInput = document.createElement("input");
+  heightInput.type = "number";
+  heightInput.id = "image-height";
+  heightInput.min = "1";
+  heightInput.value = String(session_settings.image_height ?? 600);
+  heightInput.dataset.height = "true";
+
+  customDimensionsGroup.appendChild(widthLabel);
+  customDimensionsGroup.appendChild(widthInput);
+  customDimensionsGroup.appendChild(heightLabel);
+  customDimensionsGroup.appendChild(heightInput);
+
+  form.appendChild(image_dimensions_group);
+  form.appendChild(customDimensionsGroup);
 
   /* constraint type */
   const constraint_group = document.createElement("div");
@@ -448,6 +541,11 @@ function settings_build(session_settings: SessionSettings) {
     radio_colorpicker_type_hsv: color_picker_hsv_input,
     radio_scratch_yes: scratch_area_yes_input,
     radio_scratch_no: scratch_area_no_input,
+    radio_image_dimensions_auto: image_dimensions_auto_input,
+    radio_image_dimensions_custom: image_dimensions_custom_input,
+    image_dimensions_inputgroup: customDimensionsGroup,
+    image_dimensions_width: widthInput,
+    image_dimensions_height: heightInput,
     constraint_type_time_inputgroup: timeInputsGroup,
     constraint_type_time_minutes: minutesInput,
     constraint_type_time_seconds: secondsInput,

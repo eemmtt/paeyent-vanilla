@@ -109,6 +109,11 @@ export interface Model {
   radio_colorpicker_type_hsv: HTMLInputElement;
   radio_scratch_yes: HTMLInputElement;
   radio_scratch_no: HTMLInputElement;
+  radio_image_dimensions_auto: HTMLInputElement;
+  radio_image_dimensions_custom: HTMLInputElement;
+  image_dimensions_inputgroup: HTMLDivElement;
+  image_dimensions_width: HTMLInputElement;
+  image_dimensions_height: HTMLInputElement;
 
   menu_button: HTMLButtonElement;
   fan_button: HTMLButtonElement;
@@ -134,6 +139,9 @@ export interface Model {
   constraint_actions?: number;
   color_picker_type: "rgb" | "hsv";
   scratch_area: boolean;
+  image_dimensions_type: "auto" | "custom";
+  image_width?: number;
+  image_height?: number;
 
   /* handlers that are set/unset */
   handleOnce: { once: boolean };
@@ -165,6 +173,9 @@ export interface SessionSettings {
   constraint_actions?: number;
   color_picker_type: "rgb" | "hsv";
   scratch_area: boolean;
+  image_dimensions_type: "auto" | "custom";
+  image_width?: number;
+  image_height?: number;
 }
 
 // TODO: use session configuration, build menu-container etc.
@@ -184,7 +195,7 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     is_navPreviewSet: false,
     nav_pts: new Float32Array(4),
     num_nav_pts: 0,
-    pts: new Float32Array(32),
+    pts: new Float32Array(8),
     num_pts: 0,
     color: init_color,
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
