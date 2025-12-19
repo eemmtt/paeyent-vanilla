@@ -1,5 +1,5 @@
 import { wgpu_init } from "./wgpu_initializers";
-import type { Model } from "../types/Model";
+import type { Model, SessionSettings } from "../types/Model";
 import type { PolyUniform } from "../types/PolyUniform";
 import type { RenderPassBuffer } from "../types/RenderPassBuffer";
 import type { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
@@ -17,6 +17,8 @@ export interface GraphicsModel {
   clientHeight: number;
   deviceWidth: number;
   deviceHeight: number;
+  textureWidth: number;
+  textureHeight: number;
   viewportToTextureX: number;
   viewportToTextureY: number;
 
@@ -54,7 +56,8 @@ export type Color = [number, number, number, number];
 export type RenderFunction = (model: Model) => void;
 
 export type GraphicsCtxInitializer = (
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  settings: SessionSettings
 ) => Promise<GraphicsModel>;
 
 export async function webgl2_init(
@@ -69,7 +72,9 @@ export async function canvas2d_init(
   throw Error("canvas2d_init: not implemented");
 }
 
-export async function graphics_build(): Promise<GraphicsModel> {
+export async function graphics_build(
+  settings: SessionSettings
+): Promise<GraphicsModel> {
   const canvas = document.querySelector("canvas");
   if (!canvas) {
     throw Error("build_graphics_model: Failed to query canvas");
@@ -84,7 +89,7 @@ export async function graphics_build(): Promise<GraphicsModel> {
   for (const [initializer, is_available] of graphics_ctxs) {
     if (!is_available()) continue;
     try {
-      return await initializer(canvas);
+      return await initializer(canvas, settings);
     } catch (e) {
       console.warn(
         `build_graphics_model: Failed to initialize ${initializer.name}:`,

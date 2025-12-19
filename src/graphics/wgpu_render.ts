@@ -60,9 +60,9 @@ export function wgpu_render(model: Model) {
   // always finish with composite pass
   {
     model.composite_uniform.set_zoom(model.zoom);
-    model.composite_uniform.set_texture_offset(
-      model.texture_offset_x * model.dpr,
-      model.texture_offset_y * model.dpr
+    model.composite_uniform.set_texture_pan(
+      model.texturePanX,
+      model.texturePanY
     );
     model.device.queue.writeBuffer(
       model.composite_uniform_buffer,
@@ -233,6 +233,8 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   model.poly_uniform.set_pos(0, x0, y0);
   model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_texture_width(model.textureWidth);
+  model.poly_uniform.set_texture_height(model.textureHeight);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
@@ -276,6 +278,8 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   model.poly_uniform.set_pos(0, x0, y0);
   model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
+  model.poly_uniform.set_texture_width(model.textureWidth);
+  model.poly_uniform.set_texture_height(model.textureHeight);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
@@ -342,6 +346,8 @@ function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     model.renderPassDataBuffer.blue[dataIdx],
     1
   );
+  model.poly_uniform.set_texture_width(model.textureWidth);
+  model.poly_uniform.set_texture_height(model.textureHeight);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
@@ -395,6 +401,8 @@ function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     model.renderPassDataBuffer.blue[dataIdx],
     1
   );
+  model.poly_uniform.set_texture_width(model.textureWidth);
+  model.poly_uniform.set_texture_height(model.textureHeight);
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
@@ -460,6 +468,8 @@ function onRectangleReplaceAnno(
   model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
+  model.poly_uniform.set_texture_width(model.deviceWidth); //anno layer uses viewport scaled texture
+  model.poly_uniform.set_texture_height(model.deviceHeight);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
@@ -504,6 +514,8 @@ function onRectangleAppendAnno(
   model.poly_uniform.set_pos(1, x1, y1);
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
+  model.poly_uniform.set_texture_width(model.deviceWidth);
+  model.poly_uniform.set_texture_height(model.deviceHeight);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
@@ -546,6 +558,8 @@ function onCircleAppendAnno(
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
   model.poly_uniform.set_radius(radius);
+  model.poly_uniform.set_texture_width(model.deviceWidth);
+  model.poly_uniform.set_texture_height(model.deviceHeight);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
@@ -589,6 +603,8 @@ function onCircleReplaceAnno(
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_line_width(1);
   model.poly_uniform.set_radius(radius);
+  model.poly_uniform.set_texture_width(model.deviceWidth);
+  model.poly_uniform.set_texture_height(model.deviceHeight);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,

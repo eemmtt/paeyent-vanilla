@@ -5,8 +5,8 @@ struct PolyData {
     pos_d: vec2<f32>,
     rgba: vec4<f32>,     
     line_width: f32,     
-    canvas_width: f32,     
-    canvas_height: f32,     
+    texture_device_width: f32,     
+    texture_device_height: f32,     
     brush_radius: f32,     
     brush_softness: f32,     
     brush_noise_jitter: f32,   
@@ -23,20 +23,20 @@ struct VertexOutput {
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var output: VertexOutput;
 
-    // convert viewport css coordinates to NDC
+    // texture device coordinates to NDC
     let current_ndc = vec2<f32>(
-        (poly.pos_b.x / poly.canvas_width) * 2.0 - 1.0,
-        1.0 - (poly.pos_b.y / poly.canvas_height) * 2.0
+        (poly.pos_b.x / poly.texture_device_width) * 2.0 - 1.0,
+        1.0 - (poly.pos_b.y / poly.texture_device_height) * 2.0
     );
     let last_ndc = vec2<f32>(
-        (poly.pos_a.x / poly.canvas_width) * 2.0 - 1.0,
-        1.0 - (poly.pos_a.y / poly.canvas_height) * 2.0
+        (poly.pos_a.x / poly.texture_device_width) * 2.0 - 1.0,
+        1.0 - (poly.pos_a.y / poly.texture_device_height) * 2.0
     );
 
     // calc direction and perpendicular
     let dir = normalize(current_ndc - last_ndc);
     let perp = vec2<f32>(-dir.y, dir.x);
-    let quarter_width = poly.line_width / poly.canvas_width;
+    let quarter_width = poly.line_width / poly.texture_device_width;
     let half_width = quarter_width * 2;
 
     // generate quad vertices

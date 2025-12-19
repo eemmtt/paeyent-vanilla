@@ -1,5 +1,5 @@
 struct CompositeUniforms {
-    texture_offset: vec2<f32>,
+    texture_pan: vec2<f32>,
     zoom: f32,
     texture_width: f32,
     texture_height: f32,
@@ -44,7 +44,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 
     // viewport coord -> texture coordinates
     let viewport_center = vec2<f32>(u.viewport_width * 0.5, u.viewport_height * 0.5);
-    let texture_pos = ((input.viewport_pos - viewport_center) / u.zoom) + (viewport_center - u.texture_offset);
+    // unzoom the viewport position, then translate to the texture position
+    let texture_pos = ((input.viewport_pos - viewport_center) / u.zoom) + u.texture_pan;
     let texture_size = vec2<f32>(u.texture_width, u.texture_height);
 
     let in_texture = texture_pos.x >= 0.0 && texture_pos.x < texture_size.x &&

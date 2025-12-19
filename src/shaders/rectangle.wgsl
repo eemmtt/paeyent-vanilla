@@ -16,7 +16,7 @@ struct PolyData {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) css_pos: vec2<f32>,
+    @location(0) device_pos: vec2<f32>,
 }
 
 @vertex
@@ -47,7 +47,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput{
         vec2<f32>(ndc_right, ndc_bottom)    // 4
     );
 
-    let css_offsets = array(
+    let device_offsets = array(
         vec2<f32>(left, top),     // 1
         vec2<f32>(left, bottom),    // 2
         vec2<f32>(right, top),      // 3
@@ -57,16 +57,16 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput{
     );
 
     output.position = vec4<f32>(positions[vertex_index], 0, 1.0);
-    output.css_pos = css_offsets[vertex_index];
+    output.device_pos = device_offsets[vertex_index];
     return output;
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    let on_edge =   abs(poly.pos_a.x - input.css_pos.x) < poly.line_width ||
-                    abs(poly.pos_a.y - input.css_pos.y) < poly.line_width ||
-                    abs(poly.pos_b.x - input.css_pos.x) < poly.line_width ||
-                    abs(poly.pos_b.y - input.css_pos.y) < poly.line_width;
+    let on_edge =   abs(poly.pos_a.x - input.device_pos.x) < poly.line_width ||
+                    abs(poly.pos_a.y - input.device_pos.y) < poly.line_width ||
+                    abs(poly.pos_b.x - input.device_pos.x) < poly.line_width ||
+                    abs(poly.pos_b.y - input.device_pos.y) < poly.line_width;
 
     if (!on_edge){
         discard;

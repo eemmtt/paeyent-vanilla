@@ -316,12 +316,18 @@ function updateHomeView(model: Model) {
     ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //cancel nav tool
   }
 
-  const [newZoom, centeredX, centeredY] = homeView(0.96, model);
+  const [newZoom, centeredX, centeredY] = homeView(
+    0.96,
+    model.textureWidth,
+    model.textureHeight,
+    model.deviceWidth,
+    model.deviceHeight
+  );
 
   model.zoom = newZoom;
-  model.texture_offset_x = centeredX;
-  model.texture_offset_y = centeredY;
-  model.composite_uniform.set_texture_offset(centeredX, centeredY);
+  model.texturePanX = centeredX;
+  model.texturePanY = centeredY;
+  model.composite_uniform.set_texture_pan(centeredX, centeredY);
   model.composite_uniform.set_zoom(newZoom);
 
   model.renderPassBuffer.push(
@@ -396,17 +402,17 @@ function modalBodyToEndSession(model: Model) {
 
 export function homeView(
   targetZoom: number,
-  model: Model
+  textureDeviceWidth: number,
+  textureDeviceHeight: number,
+  viewportDeviceWidth: number,
+  viewportDeviceHeight: number
 ): [number, number, number] {
-  const textureCssWidth = model.bg_texture.width / model.dpr;
-  const textureCssHeight = model.bg_texture.height / model.dpr;
-
-  const scaleX = model.clientWidth / textureCssWidth;
-  const scaleY = model.clientHeight / textureCssHeight;
+  const scaleX = viewportDeviceWidth / textureDeviceWidth;
+  const scaleY = viewportDeviceHeight / textureDeviceHeight;
 
   const newZoom = targetZoom * Math.min(scaleX, scaleY);
 
-  const centeredX = (model.clientWidth - textureCssWidth) / 2;
-  const centeredY = (model.clientHeight - textureCssHeight) / 2;
+  const centeredX = textureDeviceWidth / 2;
+  const centeredY = textureDeviceHeight / 2;
   return [newZoom, centeredX, centeredY];
 }

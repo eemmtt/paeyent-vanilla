@@ -6,8 +6,8 @@ export class CompositeUniform {
   readonly num_bytes = 16;
   readonly bytes_size = 64;
 
-  readonly offset_textureOffset_x = 0;
-  readonly offset_textureOffset_y = 1;
+  readonly offset_texturePan_x = 0;
+  readonly offset_texturePan_y = 1;
   readonly offset_zoom = 2;
   readonly offset_textureWidth = 3;
   readonly offset_textureHeight = 4;
@@ -23,16 +23,22 @@ export class CompositeUniform {
   readonly offset_gridColor_a = 14;
   readonly offset_grid_lineWidth = 15;
 
-  constructor(device: GPUDevice, canvas: HTMLCanvasElement) {
+  constructor(
+    device: GPUDevice,
+    textureDeviceWidth: number,
+    textureDeviceHeight: number,
+    viewportDeviceWidth: number,
+    viewportDeviceHeight: number
+  ) {
     this.data = new Float32Array(this.num_bytes);
 
-    this.data[this.offset_textureOffset_x] = 0; //in dev px
-    this.data[this.offset_textureOffset_y] = 0; //in dev px
+    this.data[this.offset_texturePan_x] = 0; //in dev px
+    this.data[this.offset_texturePan_y] = 0; //in dev px
     this.data[this.offset_zoom] = 0.96; //target zoom
-    this.data[this.offset_textureWidth] = canvas.width; //in dev px
-    this.data[this.offset_textureHeight] = canvas.height; //in dev px
-    this.data[this.offset_viewportWidth] = canvas.width; //in dev px
-    this.data[this.offset_viewportHeight] = canvas.height; //in dev px
+    this.data[this.offset_textureWidth] = textureDeviceWidth; //in dev px
+    this.data[this.offset_textureHeight] = textureDeviceHeight; //in dev px
+    this.data[this.offset_viewportWidth] = viewportDeviceWidth; //in dev px
+    this.data[this.offset_viewportHeight] = viewportDeviceHeight; //in dev px
     this.data[this.offset_gridMinZoom] = 10;
     this.data[this.offset_backgroundColor_r] = 0.3;
     this.data[this.offset_backgroundColor_g] = 0.3;
@@ -47,25 +53,20 @@ export class CompositeUniform {
     this.aligned_size = Math.ceil((this.num_bytes * 4) / alignment) * alignment;
   }
 
-  updateDimensionsAndTransforms(model: Model) {
-    this.set_texture_offset(
-      model.texture_offset_x * model.dpr,
-      model.texture_offset_y * model.dpr
-    );
+  updateDimensions(model: Model) {
     this.set_viewport_width(model.deviceWidth);
     this.set_viewport_height(model.deviceHeight);
-    this.set_zoom(model.zoom);
   }
 
-  set_texture_offset(x: number, y: number) {
-    this.data[this.offset_textureOffset_x] = x;
-    this.data[this.offset_textureOffset_y] = y;
+  set_texture_pan(x: number, y: number) {
+    this.data[this.offset_texturePan_x] = x;
+    this.data[this.offset_texturePan_y] = y;
   }
-  addOffsetX(increment: number) {
-    this.data[this.offset_textureOffset_x] += increment;
+  addPanX(increment: number) {
+    this.data[this.offset_texturePan_x] += increment;
   }
-  addOffsetY(increment: number) {
-    this.data[this.offset_textureOffset_y] += increment;
+  addPanY(increment: number) {
+    this.data[this.offset_texturePan_y] += increment;
   }
 
   set_zoom(zoom: number) {

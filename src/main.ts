@@ -40,6 +40,7 @@ import {
   create_texture,
   updateCompositeBindgroup,
 } from "./graphics/wgpu_initializers";
+import { RenderPassLookup } from "./graphics/wgpu_render";
 
 function mainLoop(model: Model) {
   model.timeoutId = setTimeout(() => {
@@ -98,14 +99,16 @@ function mainLoop(model: Model) {
 async function main() {
   /* init model */
   //TODO: load options from local storage if exists
-  const options: SessionSettings = {
+  const settings: SessionSettings = {
     constraint_type: "none",
     color_picker_type: "rgb",
     scratch_area: false,
-    image_dimensions_type: "auto",
+    image_dimensions_type: "custom",
+    image_width: 800,
+    image_height: 300,
   };
 
-  const model = await model_init(options);
+  const model = await model_init(settings);
 
   /* register event listeners */
 
@@ -143,22 +146,9 @@ async function main() {
         Math.min(rawDeviceHeight, model.device.limits.maxTextureDimension2D)
       );
 
-      const clientResizeRatioX = clientWidth / model.clientWidth;
-      const clientResizeRatioY = clientHeight / model.clientHeight;
-      const textureOffsetX = model.texture_offset_x * clientResizeRatioX;
-      const textureOffsetY = model.texture_offset_y * clientResizeRatioY;
-
-      // update model.pts in progress
-      for (let i = 0; i < model.num_pts; i++) {
-        model.pts[i * 2] *= clientResizeRatioX;
-        model.pts[i * 2 + 1] *= clientResizeRatioY;
-      }
-
-      // update model's recorded viewport client size and texture offset
+      // update model's recorded viewport client size
       model.clientWidth = clientWidth;
       model.clientHeight = clientHeight;
-      model.texture_offset_x = textureOffsetX;
-      model.texture_offset_y = textureOffsetY;
 
       // update viewport canvas resolution to new dimensions (csspx * devicepx/csspx = devicepx)
       model.dpr = devicePixelRatio;
@@ -166,10 +156,6 @@ async function main() {
       model.canvas.height = clampedDeviceHeight;
       model.deviceWidth = clampedDeviceWidth;
       model.deviceHeight = clampedDeviceHeight;
-      model.viewportToTextureX =
-        (devicePixelRatio * clientWidth) / model.bg_texture.width;
-      model.viewportToTextureY =
-        (devicePixelRatio * clientHeight) / model.bg_texture.height;
 
       // reconfigure surface
       const oldConfig = model.surface.getConfiguration();
@@ -183,7 +169,8 @@ async function main() {
       const [new_an_texture, new_an_texture_view] = create_texture(
         navigator.gpu.getPreferredCanvasFormat(),
         model.device,
-        model.canvas,
+        clampedDeviceWidth,
+        clampedDeviceHeight,
         "transparent"
       );
       model.an_texture = new_an_texture;
@@ -191,8 +178,7 @@ async function main() {
       updateCompositeBindgroup(model, model.an_texture_view);
 
       // update uniforms
-      model.poly_uniform.updateDimensions(model);
-      model.composite_uniform.updateDimensionsAndTransforms(model);
+      model.composite_uniform.updateDimensions(model);
 
       // render updated viewport
       model.renderPassBuffer.push(
@@ -455,6 +441,37 @@ async function main() {
   );
   model.modal_about_section.addEventListener("pointerdown", (e) =>
     onModalAboutSection(e, model)
+  );
+
+  //debugging cross
+  model.renderPassBuffer.push(
+    RenderPassLookup["line-bg"],
+    model.renderPassDataBuffer.push(
+      0,
+      0,
+      model.textureWidth,
+      model.textureHeight,
+      -1,
+      -1,
+      1,
+      0,
+      0
+    )
+  );
+
+  model.renderPassBuffer.push(
+    RenderPassLookup["line-bg"],
+    model.renderPassDataBuffer.push(
+      model.textureWidth,
+      0,
+      0,
+      model.textureHeight,
+      -1,
+      -1,
+      0,
+      1,
+      0
+    )
   );
 
   /* start update + render loop */

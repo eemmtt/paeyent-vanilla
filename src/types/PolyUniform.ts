@@ -28,8 +28,8 @@ export class PolyUniform {
 
   readonly offset_rgba = 8; //[f32;4]  16
   readonly offset_line_width = 12; //f32    4
-  readonly offset_canvas_width = 13; //f32  4
-  readonly offset_canvas_height = 14; //f32 4
+  readonly offset_texture_width = 13; //f32  4
+  readonly offset_texture_height = 14; //f32 4
   readonly offset_radius = 15; //f32         4
   readonly offset_softness = 16; //f32       4
   readonly offset_noise_jitter = 17; //f32   4
@@ -38,15 +38,15 @@ export class PolyUniform {
 
   constructor(
     device: GPUDevice,
-    canvasClientWidth: number,
-    canvasClientHeight: number
+    textureDeviceWidth: number,
+    textureDeviceHeight: number
   ) {
     this.data = new Float32Array(this.num_bytes);
-    this.data.fill(0);
+    this.data.fill(-1.0);
     this.data.set([1, 1, 1, 1], this.offset_rgba);
     this.data[this.offset_line_width] = 2;
-    this.data[this.offset_canvas_width] = canvasClientWidth;
-    this.data[this.offset_canvas_height] = canvasClientHeight;
+    this.data[this.offset_texture_width] = textureDeviceWidth;
+    this.data[this.offset_texture_height] = textureDeviceHeight;
     this.data[this.offset_radius] = 6;
     this.data[this.offset_softness] = 0;
     this.data[this.offset_noise_jitter] = 0.1;
@@ -74,35 +74,15 @@ export class PolyUniform {
     this.data[this.offset_line_width] = width;
   }
 
-  set_canvas_width(clientWidth: number) {
-    this.data[this.offset_canvas_width] = clientWidth;
+  set_texture_width(textureDeviceWidth: number) {
+    this.data[this.offset_texture_width] = textureDeviceWidth;
   }
 
-  set_canvas_height(clientHeight: number) {
-    this.data[this.offset_canvas_height] = clientHeight;
+  set_texture_height(textureDeviceHeight: number) {
+    this.data[this.offset_texture_height] = textureDeviceHeight;
   }
 
   set_radius(radius: number) {
     this.data[this.offset_radius] = radius;
-  }
-
-  updateDimensions(model: Model) {
-    if (
-      this.data[this.offset_canvas_width] === model.clientWidth &&
-      this.data[this.offset_canvas_height] === model.clientHeight
-    ) {
-      return;
-    }
-
-    // update positions a -> d
-    for (let i = 0; i < 4; i++) {
-      this.data[i * 2] *=
-        model.clientWidth / this.data[this.offset_canvas_width];
-      this.data[i * 2 + 1] *=
-        model.clientHeight / this.data[this.offset_canvas_height];
-    }
-
-    this.data[this.offset_canvas_width] = model.clientWidth;
-    this.data[this.offset_canvas_height] = model.clientHeight;
   }
 }

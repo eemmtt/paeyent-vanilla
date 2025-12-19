@@ -10,12 +10,13 @@ import { RenderPassBuffer } from "../types/RenderPassBuffer";
 import { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 import type { GraphicsModel, Color } from "./Graphics";
 import { wgpu_render } from "./wgpu_render";
-import type { Model } from "../types/Model";
+import type { Model, SessionSettings } from "../types/Model";
 
 export type FillStyle = "transparent" | "white";
 
 export async function wgpu_init(
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  settings: SessionSettings
 ): Promise<GraphicsModel> {
   if (!window) {
     throw Error("wgpu_init: Window not found");
@@ -37,15 +38,17 @@ export async function wgpu_init(
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-
-  canvas.width = Math.max(
+  const canvasDeviceWidth = Math.max(
     1,
     Math.min(rect.width * dpr, device.limits.maxTextureDimension2D)
   );
-  canvas.height = Math.max(
+  const canvasDeviceHeight = Math.max(
     1,
     Math.min(rect.height * dpr, device.limits.maxTextureDimension2D)
   );
+
+  canvas.width = canvasDeviceWidth;
+  canvas.height = canvasDeviceHeight;
 
   const context = canvas.getContext("webgpu");
   if (!context) {
@@ -57,28 +60,56 @@ export async function wgpu_init(
     format,
   });
 
+  let textureWidth = canvasDeviceWidth;
+  let textureHeight = canvasDeviceHeight;
+  if (settings.image_dimensions_type === "custom") {
+    if (
+      settings.image_width !== undefined &&
+      settings.image_height !== undefined
+    ) {
+      textureWidth = Math.max(
+        1,
+        Math.min(settings.image_width, device.limits.maxTextureDimension2D)
+      );
+      textureHeight = Math.max(
+        1,
+        Math.min(settings.image_height, device.limits.maxTextureDimension2D)
+      );
+    } else {
+      throw Error("wgpu_init: Custom image dimensions are undefined");
+    }
+  }
   const [bg_texture, bg_texture_view] = create_texture(
     format,
     device,
-    canvas,
+    textureWidth,
+    textureHeight,
     "white"
   );
   const [fg_texture, fg_texture_view] = create_texture(
     format,
     device,
-    canvas,
+    textureWidth,
+    textureHeight,
     "transparent"
   );
   const [an_texture, an_texture_view] = create_texture(
     format,
     device,
-    canvas,
+    canvasDeviceWidth,
+    canvasDeviceHeight,
     "transparent"
   );
 
   const clear_color: Color = [1, 1, 1, 1];
 
-  const composite_uniform = new CompositeUniform(device, canvas);
+  const composite_uniform = new CompositeUniform(
+    device,
+    textureWidth,
+    textureHeight,
+    canvasDeviceWidth,
+    canvasDeviceHeight
+  );
 
   const [
     composite_pipeline,
@@ -95,11 +126,7 @@ export async function wgpu_init(
     composite_uniform
   );
 
-  const poly_uniform = new PolyUniform(
-    device,
-    canvas.clientWidth,
-    canvas.clientHeight
-  );
+  const poly_uniform = new PolyUniform(device, textureWidth, textureHeight);
 
   // Calculate max render passes based on device limits
   const maxUniformBufferSize = device.limits.maxUniformBufferBindingSize;
@@ -129,10 +156,12 @@ export async function wgpu_init(
     dpr,
     clientWidth: rect.width,
     clientHeight: rect.height,
-    deviceWidth: canvas.width,
-    deviceHeight: canvas.height,
-    viewportToTextureX: 1.0,
-    viewportToTextureY: 1.0,
+    deviceWidth: canvasDeviceWidth,
+    deviceHeight: canvasDeviceHeight,
+    textureWidth,
+    textureHeight,
+    viewportToTextureX: textureWidth / canvasDeviceWidth,
+    viewportToTextureY: textureHeight / canvasDeviceHeight,
 
     bg_texture,
     fg_texture,
@@ -167,13 +196,14 @@ export async function wgpu_init(
 export function create_texture(
   texture_format: GPUTextureFormat,
   device: GPUDevice,
-  canvas: HTMLCanvasElement,
+  textureWidth: number,
+  textureHeight: number,
   fill: FillStyle
 ): [GPUTexture, GPUTextureView] {
   let texture_desc: GPUTextureDescriptor = {
     size: {
-      width: canvas.width,
-      height: canvas.height,
+      width: textureWidth,
+      height: textureHeight,
       depthOrArrayLayers: 1,
     },
     format: texture_format,
@@ -185,36 +215,36 @@ export function create_texture(
   let texture = device.createTexture(texture_desc);
 
   if (fill == "white") {
-    const data = new Uint8Array(canvas.width * canvas.height * 4).fill(255);
+    const data = new Uint8Array(textureWidth * textureHeight * 4).fill(255);
 
     device.queue.writeTexture(
       { texture: texture },
       data,
       {
         offset: 0,
-        bytesPerRow: 4 * canvas.width,
-        rowsPerImage: canvas.height,
+        bytesPerRow: 4 * textureWidth,
+        rowsPerImage: textureHeight,
       },
       {
-        width: canvas.width,
-        height: canvas.height,
+        width: textureWidth,
+        height: textureHeight,
         depthOrArrayLayers: 1,
       }
     );
   } else if (fill == "transparent") {
-    const data = new Uint8Array(canvas.width * canvas.height * 4).fill(0);
+    const data = new Uint8Array(textureWidth * textureHeight * 4).fill(0);
 
     device.queue.writeTexture(
       { texture: texture },
       data,
       {
         offset: 0,
-        bytesPerRow: 4 * canvas.width,
-        rowsPerImage: canvas.height,
+        bytesPerRow: 4 * textureWidth,
+        rowsPerImage: textureHeight,
       },
       {
-        width: canvas.width,
-        height: canvas.height,
+        width: textureWidth,
+        height: textureHeight,
         depthOrArrayLayers: 1,
       }
     );

@@ -12,6 +12,7 @@ import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
 import { voidEventHandler } from "../ui/handlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
 import type { CompositeUniform } from "./CompositeUniform";
+import { homeView } from "../ui/updaters";
 
 //TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 //      ...but i prefer to see everything in one chunk at this point
@@ -27,6 +28,8 @@ export interface Model {
   clientHeight: number;
   deviceWidth: number;
   deviceHeight: number;
+  textureWidth: number;
+  textureHeight: number;
   viewportToTextureX: number;
   viewportToTextureY: number;
 
@@ -75,10 +78,10 @@ export interface Model {
   pointerEventVoid: PointerEvent;
   zoom: number;
   zoom_last: number;
-  texture_offset_x: number; //in css px
-  texture_offset_y: number; //in css px
-  texture_offset_last_x: number; //in css px
-  texture_offset_last_y: number; //in css px
+  texturePanX: number; //device px
+  texturePanY: number;
+  texturePanX_last: number; //device px
+  texturePanY_last: number;
   marker_radius: number;
 
   /* menu state */
@@ -186,7 +189,19 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   const rand_b = Math.random();
   const init_color = new Float32Array([rand_r, rand_g, rand_b, 1]);
   const menu_model = menu_build(settings, session_state, init_color);
-  const graphics_model = await graphics_build();
+  const graphics_model = await graphics_build(settings);
+
+  // TODO: it is hacky to resize outside of graphics_build()?
+  const [zoom, texturePanX, texturePanY] = homeView(
+    0.96,
+    graphics_model.textureWidth,
+    graphics_model.textureHeight,
+    graphics_model.clientWidth,
+    graphics_model.clientHeight
+  );
+  graphics_model.composite_uniform.set_zoom(zoom);
+  graphics_model.composite_uniform.set_texture_pan(texturePanX, texturePanY);
+
   const drawing_model = {
     curr_tool: 0,
     last_tool: 0,
@@ -201,12 +216,12 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
     eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
-    zoom: graphics_model.composite_uniform.get_zoom(),
-    zoom_last: graphics_model.composite_uniform.get_zoom(),
-    texture_offset_x: 0,
-    texture_offset_y: 0,
-    texture_offset_last_x: 0,
-    texture_offset_last_y: 0,
+    zoom,
+    zoom_last: zoom,
+    texturePanX,
+    texturePanY,
+    texturePanX_last: texturePanX,
+    texturePanY_last: texturePanY,
     marker_radius: 15,
   };
 
