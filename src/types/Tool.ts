@@ -853,6 +853,32 @@ function zoom_stop(model: Model, viewportX: number, viewportY: number) {
       )
     );
 
+    /* NEWRENDERPASSBUFFER
+    // bake type into function name, less lookups 
+    // no mismatched pushType:RenderPasstype
+    // can have default values for convenience
+    model.renderPassBuffer.pushRectangleReplaceAnno(
+      model.nav_pts[0] - scaledHalfViewportX, //left
+      model.nav_pts[1] - scaledHalfViewportY, //top
+      model.nav_pts[0] + scaledHalfViewportX, //right
+      model.nav_pts[1] + scaledHalfViewportY, //bottom
+      0,
+      0,
+      0
+    );
+
+    model.renderPassBuffer.pushRectangle(
+      "rectangle-replace-anno",
+      model.nav_pts[0] - scaledHalfViewportX, //left
+      model.nav_pts[1] - scaledHalfViewportY, //top
+      model.nav_pts[0] + scaledHalfViewportX, //right
+      model.nav_pts[1] + scaledHalfViewportY, //bottom
+      0,
+      0,
+      0
+    );
+    */
+
     // preview circle
     model.renderPassBuffer.push(
       RenderPassLookup["circle-append-anno"],

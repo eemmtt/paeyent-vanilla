@@ -235,6 +235,10 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
   model.poly_uniform.set_rgba(r, g, b, 1);
   model.poly_uniform.set_texture_width(model.textureWidth);
   model.poly_uniform.set_texture_height(model.textureHeight);
+
+  //NEWRENDERPASSBUFFER
+  //model.poly_uniform.fromRenderPassBuffer(dataIdx);
+
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.poly_uniform.aligned_size,
