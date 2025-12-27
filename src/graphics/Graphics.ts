@@ -1,9 +1,7 @@
 import { wgpu_init } from "./wgpu_initializers";
 import type { Model, SessionSettings } from "../types/Model";
-import type { PolyUniform } from "../types/PolyUniform";
-import type { RenderPassBuffer } from "../types/RenderPassBuffer";
-import type { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 import type { CompositeUniform } from "../types/CompositeUniform";
+import { DrawUniformBuffer } from "../types/DrawUniformBuffer";
 
 export interface GraphicsModel {
   /* rendering state */
@@ -31,7 +29,8 @@ export interface GraphicsModel {
   clear_color: Color;
   maxRenderPasses: number;
 
-  poly_uniform: PolyUniform;
+  render: RenderFunction;
+  drawUniformBuffer: DrawUniformBuffer;
   poly_buffer: GPUBuffer;
   poly_bindgroup: GPUBindGroup;
 
@@ -46,10 +45,6 @@ export interface GraphicsModel {
   circle_pipeline: GPURenderPipeline;
   rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
-
-  renderPassBuffer: RenderPassBuffer;
-  renderPassDataBuffer: RenderPassDataBuffer;
-  render: RenderFunction;
 }
 
 export type Color = [number, number, number, number];
@@ -61,13 +56,13 @@ export type GraphicsCtxInitializer = (
 ) => Promise<GraphicsModel>;
 
 export async function webgl2_init(
-  canvas: HTMLCanvasElement
+  _canvas: HTMLCanvasElement
 ): Promise<GraphicsModel> {
   throw Error("webgl2_init: not implemented");
 }
 
 export async function canvas2d_init(
-  canvas: HTMLCanvasElement
+  _canvas: HTMLCanvasElement
 ): Promise<GraphicsModel> {
   throw Error("canvas2d_init: not implemented");
 }

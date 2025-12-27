@@ -121,10 +121,7 @@ function updateButtonStartSession(model: Model) {
 
   //update modal body to inSession contents
   modalBodyToInSession(model);
-  model.renderPassBuffer.push(
-    3, // RenderPassLookup["clear-all"] === 3
-    -1 // no data
-  );
+  model.drawUniformBuffer.pushClearAll();
 }
 
 function updateButtonEndSession(model: Model) {
@@ -163,11 +160,11 @@ function updateButtonAbout(model: Model) {
   }
 }
 
-function updateButtonSave(model: Model) {
+function updateButtonSave(_model: Model) {
   alert("TODO: Implement save to file");
 }
 
-function updateButtonShare(model: Model) {
+function updateButtonShare(_model: Model) {
   alert("TODO: Implement share");
 }
 
@@ -329,11 +326,7 @@ function updateHomeView(model: Model) {
   model.texturePanY = centeredY;
   model.composite_uniform.set_texture_pan(centeredX, centeredY);
   model.composite_uniform.set_zoom(newZoom);
-
-  model.renderPassBuffer.push(
-    0, // clear fg
-    -1 // no data
-  );
+  model.drawUniformBuffer.pushClearFg();
 }
 
 function updateButtonZoom(model: Model) {

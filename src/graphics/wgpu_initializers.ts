@@ -5,12 +5,10 @@ import circleShaderCode from "../shaders/circle.wgsl?raw";
 import rectangleShaderCode from "../shaders/rectangle.wgsl?raw";
 
 import { CompositeUniform } from "../types/CompositeUniform";
-import { PolyUniform } from "../types/PolyUniform";
-import { RenderPassBuffer } from "../types/RenderPassBuffer";
-import { RenderPassDataBuffer } from "../types/RenderPassDataBuffer";
 import type { GraphicsModel, Color } from "./Graphics";
 import { wgpu_render } from "./wgpu_render";
 import type { Model, SessionSettings } from "../types/Model";
+import { DrawUniformBuffer } from "../types/DrawUniformBuffer";
 
 export type FillStyle = "transparent" | "white";
 
@@ -126,12 +124,11 @@ export async function wgpu_init(
     composite_uniform
   );
 
-  const poly_uniform = new PolyUniform(device, textureWidth, textureHeight);
+  const drawUniformBuffer = new DrawUniformBuffer(device);
 
-  // Calculate max render passes based on device limits
   const maxUniformBufferSize = device.limits.maxUniformBufferBindingSize;
   const maxRenderPasses = Math.floor(
-    maxUniformBufferSize / poly_uniform.aligned_size
+    maxUniformBufferSize / drawUniformBuffer.alignedSize
   );
 
   const [
@@ -141,10 +138,7 @@ export async function wgpu_init(
     fan_pipeline,
     circle_pipeline,
     rectangle_pipeline,
-  ] = create_poly_resources(device, format, poly_uniform, maxRenderPasses);
-
-  const renderPassBuffer = new RenderPassBuffer(maxRenderPasses);
-  const renderPassDataBuffer = new RenderPassDataBuffer(maxRenderPasses);
+  ] = create_poly_resources(device, format, drawUniformBuffer, maxRenderPasses);
 
   console.log("Intialized WebGPU Context");
   return {
@@ -172,7 +166,8 @@ export async function wgpu_init(
     clear_color,
     maxRenderPasses,
 
-    poly_uniform,
+    render: wgpu_render,
+    drawUniformBuffer,
     poly_buffer,
     poly_bindgroup,
     composite_uniform,
@@ -186,10 +181,6 @@ export async function wgpu_init(
     composite_pipeline,
     composite_bindgroup,
     composite_sampler,
-
-    renderPassBuffer,
-    renderPassDataBuffer,
-    render: wgpu_render,
   };
 }
 
@@ -455,7 +446,7 @@ export function updateCompositeBindgroup(
 export function create_poly_resources(
   device: GPUDevice,
   format: GPUTextureFormat,
-  poly_uniform: PolyUniform,
+  drawUniformBuffer: DrawUniformBuffer,
   max_queued_renderpasses: number
 ): [
   GPUBuffer,
@@ -463,10 +454,10 @@ export function create_poly_resources(
   GPURenderPipeline,
   GPURenderPipeline,
   GPURenderPipeline,
-  GPURenderPipeline
+  GPURenderPipeline,
 ] {
   const poly_buffer = device.createBuffer({
-    size: poly_uniform.aligned_size * max_queued_renderpasses,
+    size: drawUniformBuffer.alignedSize * max_queued_renderpasses,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
@@ -491,7 +482,7 @@ export function create_poly_resources(
         resource: {
           buffer: poly_buffer,
           offset: 0,
-          size: poly_uniform.aligned_size,
+          size: drawUniformBuffer.alignedSize,
         },
       },
     ],

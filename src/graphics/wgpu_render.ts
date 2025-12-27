@@ -28,12 +28,12 @@ export const RenderPassHandlers = [
   onClearBg,
   onClearAnno,
   onClearAll,
-  onLineFg,
-  onLineBg,
-  onFanFg,
-  onFanBg,
-  onBrushFg,
-  onBrushBg,
+  onLineReplaceFg,
+  onLineAppendBg,
+  onFanReplaceFg,
+  onFanAppendBg,
+  onBrushReplaceFg,
+  onBrushAppendBg,
   onRectangleAppendAnno,
   onRectangleReplaceAnno,
   onCircleAppendAnno,
@@ -49,12 +49,8 @@ export function wgpu_render(model: Model) {
   });
 
   // call each RenderPassHandler
-  for (let i = 0; i < model.renderPassBuffer.top; i++) {
-    RenderPassHandlers[model.renderPassBuffer.type[i]](
-      model,
-      encoder,
-      model.renderPassBuffer.dataIdx[i]
-    );
+  for (let i = 0; i < model.drawUniformBuffer.top; i++) {
+    RenderPassHandlers[model.drawUniformBuffer.getType(i)](model, encoder, i);
   }
 
   // always finish with composite pass
@@ -92,21 +88,13 @@ export function wgpu_render(model: Model) {
   model.device.queue.submit([commandBuffer]);
 }
 
-function onClearFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx !== -1) {
-    console.warn(
-      `onClearFg: received dataIdx === ${dataIdx}, but -1 was expected`
-    );
-    return;
-  }
-
+function onClearFg(model: Model, encoder: GPUCommandEncoder, _dataIdx: number) {
   encoder
     .beginRenderPass({
       label: "Clear Foreground",
       colorAttachments: [
         {
           view: model.fg_texture_view,
-          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -115,14 +103,7 @@ function onClearFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     .end();
 }
 
-function onClearBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx !== -1) {
-    console.warn(
-      `onClearBg: received dataIdx === ${dataIdx}, but -1 was expected`
-    );
-    return;
-  }
-
+function onClearBg(model: Model, encoder: GPUCommandEncoder, _dataIdx: number) {
   encoder
     .beginRenderPass({
       label: "Clear Background",
@@ -141,22 +122,14 @@ function onClearBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 function onClearAnno(
   model: Model,
   encoder: GPUCommandEncoder,
-  dataIdx: number
+  _dataIdx: number
 ) {
-  if (dataIdx !== -1) {
-    console.warn(
-      `onClearAnno: received dataIdx === ${dataIdx}, but -1 was expected`
-    );
-    return;
-  }
-
   encoder
     .beginRenderPass({
       label: "Clear Annotation",
       colorAttachments: [
         {
           view: model.an_texture_view,
-          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -165,21 +138,17 @@ function onClearAnno(
     .end();
 }
 
-function onClearAll(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx !== -1) {
-    console.warn(
-      `onClearAll: received dataIdx === ${dataIdx}, but -1 was expected`
-    );
-    return;
-  }
-
+function onClearAll(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  _dataIdx: number
+) {
   encoder
     .beginRenderPass({
       label: "Clear Annotation",
       colorAttachments: [
         {
           view: model.an_texture_view,
-          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -193,7 +162,6 @@ function onClearAll(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
       colorAttachments: [
         {
           view: model.fg_texture_view,
-          //clearValue: [0, 0, 0, 0], //defaults to 0,0,0,0?
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -207,7 +175,7 @@ function onClearAll(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
       colorAttachments: [
         {
           view: model.bg_texture_view,
-          clearValue: model.clear_color, //defaults to 0,0,0,0?
+          clearValue: model.clear_color,
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -216,33 +184,29 @@ function onClearAll(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     .end();
 }
 
-function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
-    console.warn(`onLineFg: invalid dataIdx ${dataIdx}`);
+function onLineReplaceFg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onLineReplaceFg: invalid dataIdx ${dataIdx}`);
     return;
   }
 
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const x1 = model.renderPassDataBuffer.x1[dataIdx];
-  const y1 = model.renderPassDataBuffer.y1[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
-
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_pos(1, x1, y1);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_texture_width(model.textureWidth);
-  model.poly_uniform.set_texture_height(model.textureHeight);
-
-  //NEWRENDERPASSBUFFER
-  //model.poly_uniform.fromRenderPassBuffer(dataIdx);
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.textureWidth,
+    model.textureHeight
+  );
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -250,7 +214,6 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     colorAttachments: [
       {
         view: model.fg_texture_view,
-        //clearValue: [0, 0, 0, 0],
         loadOp: "clear" as GPULoadOp,
         storeOp: "store" as GPUStoreOp,
       },
@@ -259,35 +222,35 @@ function onLineFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 
   renderpass.setPipeline(model.line_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
 }
 
-function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
-    console.warn(`onLineBg: invalid dataIdx ${dataIdx}`);
+function onLineAppendBg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onLineAppendBg: invalid dataIdx ${dataIdx}`);
     return;
   }
 
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const x1 = model.renderPassDataBuffer.x1[dataIdx];
-  const y1 = model.renderPassDataBuffer.y1[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.textureWidth,
+    model.textureHeight
+  );
 
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_pos(1, x1, y1);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_texture_width(model.textureWidth);
-  model.poly_uniform.set_texture_height(model.textureHeight);
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   encoder
@@ -296,7 +259,6 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
       colorAttachments: [
         {
           view: model.fg_texture_view,
-          //clearValue: [0, 0, 0, 0],
           loadOp: "clear" as GPULoadOp,
           storeOp: "store" as GPUStoreOp,
         },
@@ -317,45 +279,35 @@ function onLineBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 
   renderpass.setPipeline(model.line_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
 }
 
-function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
-    console.warn(`onFanFg: invalid dataIdx ${dataIdx}`);
+function onFanReplaceFg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onFanReplaceFg: invalid dataIdx ${dataIdx}`);
     return;
   }
 
-  model.poly_uniform.set_pos(
-    0,
-    model.renderPassDataBuffer.x0[dataIdx],
-    model.renderPassDataBuffer.y0[dataIdx]
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.textureWidth,
+    model.textureHeight
   );
-  model.poly_uniform.set_pos(
-    1,
-    model.renderPassDataBuffer.x1[dataIdx],
-    model.renderPassDataBuffer.y1[dataIdx]
-  );
-  model.poly_uniform.set_pos(
-    2,
-    model.renderPassDataBuffer.x2[dataIdx],
-    model.renderPassDataBuffer.y2[dataIdx]
-  );
-  model.poly_uniform.set_rgba(
-    model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.green[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
-    1
-  );
-  model.poly_uniform.set_texture_width(model.textureWidth);
-  model.poly_uniform.set_texture_height(model.textureHeight);
+
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -363,7 +315,6 @@ function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
     colorAttachments: [
       {
         view: model.fg_texture_view,
-        //clearValue: [0, 0, 0, 0],
         loadOp: "clear" as GPULoadOp,
         storeOp: "store" as GPUStoreOp,
       },
@@ -372,45 +323,35 @@ function onFanFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 
   renderpass.setPipeline(model.fan_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(3, 1);
   renderpass.end();
 }
 
-function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.renderPassDataBuffer.top) {
-    console.warn(`onFanBg: invalid dataIdx ${dataIdx}`);
+function onFanAppendBg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onFanAppendBg: invalid dataIdx ${dataIdx}`);
     return;
   }
 
-  model.poly_uniform.set_pos(
-    0,
-    model.renderPassDataBuffer.x0[dataIdx],
-    model.renderPassDataBuffer.y0[dataIdx]
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.textureWidth,
+    model.textureHeight
   );
-  model.poly_uniform.set_pos(
-    1,
-    model.renderPassDataBuffer.x1[dataIdx],
-    model.renderPassDataBuffer.y1[dataIdx]
-  );
-  model.poly_uniform.set_pos(
-    2,
-    model.renderPassDataBuffer.x2[dataIdx],
-    model.renderPassDataBuffer.y2[dataIdx]
-  );
-  model.poly_uniform.set_rgba(
-    model.renderPassDataBuffer.red[dataIdx],
-    model.renderPassDataBuffer.green[dataIdx],
-    model.renderPassDataBuffer.blue[dataIdx],
-    1
-  );
-  model.poly_uniform.set_texture_width(model.textureWidth);
-  model.poly_uniform.set_texture_height(model.textureHeight);
+
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   encoder
@@ -440,17 +381,25 @@ function onFanBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
 
   renderpass.setPipeline(model.fan_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(3, 1);
   renderpass.end();
 }
 
-function onBrushFg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+function onBrushReplaceFg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
   console.warn("onBrushFg not implemented");
   return;
 }
-function onBrushBg(model: Model, encoder: GPUCommandEncoder, dataIdx: number) {
+function onBrushAppendBg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
   console.warn("onBrushBg not implemented");
   return;
 }
@@ -460,25 +409,24 @@ function onRectangleReplaceAnno(
   encoder: GPUCommandEncoder,
   dataIdx: number
 ) {
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const x1 = model.renderPassDataBuffer.x1[dataIdx];
-  const y1 = model.renderPassDataBuffer.y1[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onRectangleReplaceAnno: invalid dataIdx ${dataIdx}`);
+    return;
+  }
 
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_pos(1, x1, y1);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_texture_width(model.deviceWidth); //anno layer uses viewport scaled texture
-  model.poly_uniform.set_texture_height(model.deviceHeight);
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.deviceWidth,
+    model.deviceHeight
+  );
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -495,7 +443,7 @@ function onRectangleReplaceAnno(
 
   renderpass.setPipeline(model.rectangle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
@@ -506,25 +454,24 @@ function onRectangleAppendAnno(
   encoder: GPUCommandEncoder,
   dataIdx: number
 ) {
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const x1 = model.renderPassDataBuffer.x1[dataIdx];
-  const y1 = model.renderPassDataBuffer.y1[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onRectangleAppendAnno: invalid dataIdx ${dataIdx}`);
+    return;
+  }
 
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_pos(1, x1, y1);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_texture_width(model.deviceWidth);
-  model.poly_uniform.set_texture_height(model.deviceHeight);
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.deviceWidth,
+    model.deviceHeight
+  );
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -540,7 +487,7 @@ function onRectangleAppendAnno(
 
   renderpass.setPipeline(model.rectangle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
@@ -551,24 +498,24 @@ function onCircleAppendAnno(
   encoder: GPUCommandEncoder,
   dataIdx: number
 ) {
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
-  const radius = model.renderPassDataBuffer.x1[dataIdx]; //TODO: restructure RenderPassDataBuffer to de-hackify this
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onCircleAppendAnno: invalid dataIdx ${dataIdx}`);
+    return;
+  }
 
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_radius(radius);
-  model.poly_uniform.set_texture_width(model.deviceWidth);
-  model.poly_uniform.set_texture_height(model.deviceHeight);
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.deviceWidth,
+    model.deviceHeight
+  );
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -585,7 +532,7 @@ function onCircleAppendAnno(
 
   renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
@@ -596,24 +543,24 @@ function onCircleReplaceAnno(
   encoder: GPUCommandEncoder,
   dataIdx: number
 ) {
-  const x0 = model.renderPassDataBuffer.x0[dataIdx];
-  const y0 = model.renderPassDataBuffer.y0[dataIdx];
-  const r = model.renderPassDataBuffer.red[dataIdx];
-  const g = model.renderPassDataBuffer.green[dataIdx];
-  const b = model.renderPassDataBuffer.blue[dataIdx];
-  const radius = model.renderPassDataBuffer.x1[dataIdx]; //TODO: restructure RenderPassDataBuffer to de-hackify this
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onCircleReplaceAnno: invalid dataIdx ${dataIdx}`);
+    return;
+  }
 
-  model.poly_uniform.set_pos(0, x0, y0);
-  model.poly_uniform.set_rgba(r, g, b, 1);
-  model.poly_uniform.set_line_width(1);
-  model.poly_uniform.set_radius(radius);
-  model.poly_uniform.set_texture_width(model.deviceWidth);
-  model.poly_uniform.set_texture_height(model.deviceHeight);
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.deviceWidth,
+    model.deviceHeight
+  );
 
   model.device.queue.writeBuffer(
     model.poly_buffer,
-    dataIdx * model.poly_uniform.aligned_size,
-    model.poly_uniform.data.buffer
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
   );
 
   const renderpass = encoder.beginRenderPass({
@@ -630,7 +577,7 @@ function onCircleReplaceAnno(
 
   renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
-    dataIdx * model.poly_uniform.aligned_size,
+    dataIdx * model.drawUniformBuffer.alignedSize,
   ]);
   renderpass.draw(6, 1);
   renderpass.end();

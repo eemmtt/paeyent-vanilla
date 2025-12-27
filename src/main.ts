@@ -76,13 +76,11 @@ function mainLoop(model: Model) {
     const updateAvg = model.updateTimes.push(
       performance.now() - model.updateStart
     );
-    //console.log("Update time:", model.updateTimes.getAverage());
 
-    // render each item in the renderPassBuffer
-    if (model.renderPassBuffer.top > 0) {
+    // render DrawUniform buffer
+    if (model.drawUniformBuffer.top > 0) {
       model.render(model);
-      model.renderPassBuffer.clear();
-      model.renderPassDataBuffer.clear();
+      model.drawUniformBuffer.clear();
     }
 
     // box update time + render time to 10ms
@@ -181,10 +179,7 @@ async function main() {
       model.composite_uniform.updateDimensions(model);
 
       // render updated viewport
-      model.renderPassBuffer.push(
-        0, // clear fg
-        -1 // no data
-      );
+      model.drawUniformBuffer.pushClearFg();
     }
   };
 
@@ -444,34 +439,24 @@ async function main() {
   );
 
   //debugging cross
-  model.renderPassBuffer.push(
-    RenderPassLookup["line-bg"],
-    model.renderPassDataBuffer.push(
-      0,
-      0,
-      model.textureWidth,
-      model.textureHeight,
-      -1,
-      -1,
-      1,
-      0,
-      0
-    )
+  model.drawUniformBuffer.pushLineAppendBg(
+    0,
+    0,
+    model.textureWidth,
+    model.textureHeight,
+    1,
+    0,
+    0
   );
 
-  model.renderPassBuffer.push(
-    RenderPassLookup["line-bg"],
-    model.renderPassDataBuffer.push(
-      model.textureWidth,
-      0,
-      0,
-      model.textureHeight,
-      -1,
-      -1,
-      0,
-      1,
-      0
-    )
+  model.drawUniformBuffer.pushLineAppendBg(
+    model.textureWidth,
+    0,
+    0,
+    model.textureHeight,
+    0,
+    1,
+    0
   );
 
   /* start update + render loop */

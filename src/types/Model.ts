@@ -4,15 +4,13 @@ import {
   type Color,
   type RenderFunction,
 } from "../graphics/Graphics";
-import type { PolyUniform } from "./PolyUniform";
 import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
 import { PaeyentEventDataBuffer } from "./PaeyentEventDataBuffer";
-import type { RenderPassBuffer } from "./RenderPassBuffer";
-import type { RenderPassDataBuffer } from "./RenderPassDataBuffer";
 import { voidEventHandler } from "../ui/handlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
 import type { CompositeUniform } from "./CompositeUniform";
 import { homeView } from "../ui/updaters";
+import type { DrawUniformBuffer } from "./DrawUniformBuffer";
 
 //TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 //      ...but i prefer to see everything in one chunk at this point
@@ -42,7 +40,8 @@ export interface Model {
   clear_color: Color;
   maxRenderPasses: number;
 
-  poly_uniform: PolyUniform;
+  render: RenderFunction;
+  drawUniformBuffer: DrawUniformBuffer;
   poly_buffer: GPUBuffer;
   poly_bindgroup: GPUBindGroup;
 
@@ -57,10 +56,6 @@ export interface Model {
   circle_pipeline: GPURenderPipeline;
   rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
-
-  render: RenderFunction;
-  renderPassBuffer: RenderPassBuffer;
-  renderPassDataBuffer: RenderPassDataBuffer;
 
   /* drawing state */
   curr_tool: number; //used to index into toolhandlers. See tool.ts
@@ -196,11 +191,9 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     0.96,
     graphics_model.textureWidth,
     graphics_model.textureHeight,
-    graphics_model.clientWidth,
-    graphics_model.clientHeight
+    graphics_model.deviceWidth,
+    graphics_model.deviceHeight
   );
-  graphics_model.composite_uniform.set_zoom(zoom);
-  graphics_model.composite_uniform.set_texture_pan(texturePanX, texturePanY);
 
   const drawing_model = {
     curr_tool: 0,

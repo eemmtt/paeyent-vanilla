@@ -1,5 +1,4 @@
-import type { Color } from "../graphics/Graphics";
-import type { SessionSettings, SessionState, Model } from "../types/Model";
+import type { SessionSettings, SessionState } from "../types/Model";
 
 export function menu_build(
   settings: SessionSettings,
@@ -258,12 +257,18 @@ function settings_build(session_settings: SessionSettings) {
 
   const image_dimensions_custom_text = document.createTextNode("Custom");
 
-  image_dimensions_radio_custom_label.appendChild(image_dimensions_custom_input);
+  image_dimensions_radio_custom_label.appendChild(
+    image_dimensions_custom_input
+  );
   image_dimensions_radio_custom_label.appendChild(image_dimensions_custom_text);
 
   // assemble image dimensions group
-  image_dimensions_radio_container.appendChild(image_dimensions_radio_auto_label);
-  image_dimensions_radio_container.appendChild(image_dimensions_radio_custom_label);
+  image_dimensions_radio_container.appendChild(
+    image_dimensions_radio_auto_label
+  );
+  image_dimensions_radio_container.appendChild(
+    image_dimensions_radio_custom_label
+  );
   image_dimensions_group.appendChild(image_dimensions_radio_container);
 
   // Custom dimensions inputs
@@ -583,7 +588,7 @@ function color_picker_build(
   HTMLDivElement,
   HTMLInputElement,
   HTMLInputElement,
-  HTMLInputElement
+  HTMLInputElement,
 ] {
   const color_picker = document.createElement("div");
   if (settings.color_picker_type == "rgb") {
