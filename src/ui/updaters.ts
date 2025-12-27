@@ -30,7 +30,6 @@ export type UIEventType =
   | "input-slider-red"
   | "input-slider-green"
   | "input-slider-blue"
-  | "window-resize"
   | "home-view"
   | "button-zoom"
   | "button-pan";

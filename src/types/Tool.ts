@@ -42,14 +42,14 @@ export const ToolUpdaters = [
 ] as const;
 
 /* POLY LINE */
-function line_pointerdown(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-    console.warn(`line_pointerdown: invalid dataIdx ${dataIdx}`);
+function line_pointerdown(model: Model, idx: number) {
+  if (!model.eventBuffer.isValidIndex(idx)) {
+    console.warn(`line_pointerdown: invalid idx ${idx}`);
     return;
   }
 
-  const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-  const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+  const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+  const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
   const centerDeviceX = model.deviceWidth * 0.5;
   const centerDeviceY = model.deviceHeight * 0.5;
   const textureX =
@@ -63,16 +63,16 @@ function line_pointerdown(model: Model, dataIdx: number) {
     line_stop(model, textureX, textureY);
   }
 }
-function line_pointerup(_model: Model, _dataIdx: number) {}
-function line_pointermove(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-    console.warn(`line_pointermove: invalid dataIdx ${dataIdx}`);
+function line_pointerup(_model: Model, _idx: number) {}
+function line_pointermove(model: Model, idx: number) {
+  if (!model.eventBuffer.isValidIndex(idx)) {
+    console.warn(`line_pointermove: invalid idx ${idx}`);
     return;
   }
 
   if (model.is_drawing) {
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
     const centerDeviceX = model.deviceWidth * 0.5;
     const centerDeviceY = model.deviceHeight * 0.5;
     const textureX =
@@ -133,7 +133,7 @@ function line_hover(model: Model, x: number, y: number) {
   );
 }
 
-function line_cancel(model: Model, _dataIdx: number) {
+function line_cancel(model: Model, _idx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
   model.drawUniformBuffer.pushClearFg();
@@ -142,14 +142,14 @@ function line_cancel(model: Model, _dataIdx: number) {
 
 /* POLY FAN */
 
-function fan_pointerdown(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-    console.warn(`fan_pointerdown: invalid dataIdx ${dataIdx}`);
+function fan_pointerdown(model: Model, idx: number) {
+  if (!model.eventBuffer.isValidIndex(idx)) {
+    console.warn(`fan_pointerdown: invalid idx ${idx}`);
     return;
   }
 
-  const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-  const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+  const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+  const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
   const centerDeviceX = model.deviceWidth * 0.5;
   const centerDeviceY = model.deviceHeight * 0.5;
   const textureX =
@@ -164,17 +164,17 @@ function fan_pointerdown(model: Model, dataIdx: number) {
   }
 }
 
-function fan_pointerup(_model: Model, _dataIdx: number) {}
+function fan_pointerup(_model: Model, _idx: number) {}
 
-function fan_pointermove(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-    console.warn(`fan_pointermove: invalid dataIdx ${dataIdx}`);
+function fan_pointermove(model: Model, idx: number) {
+  if (!model.eventBuffer.isValidIndex(idx)) {
+    console.warn(`fan_pointermove: invalid idx ${idx}`);
     return;
   }
 
   if (model.is_drawing) {
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
     const centerDeviceX = model.deviceWidth * 0.5;
     const centerDeviceY = model.deviceHeight * 0.5;
     const textureX =
@@ -273,7 +273,7 @@ function fan_hover(model: Model, x: number, y: number) {
     );
   }
 }
-function fan_cancel(model: Model, _dataIdx: number) {
+function fan_cancel(model: Model, _idx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
 
@@ -284,34 +284,34 @@ function fan_cancel(model: Model, _dataIdx: number) {
 }
 
 /* Pan */
-function pan_pointerdown(model: Model, dataIdx: number) {
+function pan_pointerdown(model: Model, idx: number) {
   if (!model.is_navigating) {
     pan_start(model);
   } else {
-    if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-      console.warn(`pan_pointerdown: invalid dataIdx ${dataIdx}`);
+    if (!model.eventBuffer.isValidIndex(idx)) {
+      console.warn(`pan_pointerdown: invalid idx ${idx}`);
       return;
     }
 
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
     pan_stop(model, viewportDeviceX, viewportDeviceY);
   }
 }
 
-function pan_pointerup(_model: Model, _dataIdx: number) {}
-function pan_pointermove(model: Model, dataIdx: number) {
+function pan_pointerup(_model: Model, _idx: number) {}
+function pan_pointermove(model: Model, idx: number) {
   if (model.is_navigating) {
-    if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-      console.warn(`pan_pointermove: invalid dataIdx ${dataIdx}`);
+    if (!model.eventBuffer.isValidIndex(idx)) {
+      console.warn(`pan_pointermove: invalid idx ${idx}`);
       return;
     }
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
     pan_hover(model, viewportDeviceX, viewportDeviceY);
   }
 }
-function pan_cancel(model: Model, _dataIdx: number) {
+function pan_cancel(model: Model, _idx: number) {
   // revert to previous values
   model.is_navigating = false;
   model.is_navPreviewSet = false;
@@ -541,35 +541,35 @@ function pan_hover(model: Model, viewportX: number, viewportY: number) {
 }
 
 /* Zoom */
-function zoom_pointerdown(model: Model, dataIdx: number) {
+function zoom_pointerdown(model: Model, idx: number) {
   if (!model.is_navigating) {
     zoom_start(model);
   } else {
-    if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-      console.warn(`zoom_pointerdown: invalid dataIdx ${dataIdx}`);
+    if (!model.eventBuffer.isValidIndex(idx)) {
+      console.warn(`zoom_pointerdown: invalid idx ${idx}`);
       return;
     }
 
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
 
     zoom_stop(model, viewportDeviceX, viewportDeviceY);
   }
 }
-function zoom_pointerup(_model: Model, _dataIdx: number) {}
-function zoom_pointermove(model: Model, dataIdx: number) {
-  if (dataIdx === -1 || dataIdx >= model.eventDataBuffer.top) {
-    console.warn(`zoom_pointermove: invalid dataIdx ${dataIdx}`);
+function zoom_pointerup(_model: Model, _idx: number) {}
+function zoom_pointermove(model: Model, idx: number) {
+  if (!model.eventBuffer.isValidIndex(idx)) {
+    console.warn(`zoom_pointermove: invalid idx ${idx}`);
     return;
   }
   if (model.is_navigating) {
-    const viewportDeviceX = model.eventDataBuffer.x[dataIdx] * model.dpr;
-    const viewportDeviceY = model.eventDataBuffer.y[dataIdx] * model.dpr;
+    const viewportDeviceX = model.eventBuffer.getX(idx) * model.dpr;
+    const viewportDeviceY = model.eventBuffer.getY(idx) * model.dpr;
 
     zoom_hover(model, viewportDeviceX, viewportDeviceY);
   }
 }
-function zoom_cancel(model: Model, _dataIdx: number) {
+function zoom_cancel(model: Model, _idx: number) {
   // revert to previous values
   model.is_navigating = false;
   model.is_navPreviewSet = false;

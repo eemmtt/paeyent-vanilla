@@ -4,13 +4,12 @@ import {
   type Color,
   type RenderFunction,
 } from "../graphics/Graphics";
-import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
-import { PaeyentEventDataBuffer } from "./PaeyentEventDataBuffer";
 import { voidEventHandler } from "../ui/handlers";
 import { RollingAverageBuffer } from "./RollingAverageBuffer";
 import type { CompositeUniform } from "./CompositeUniform";
 import { homeView } from "../ui/updaters";
 import type { DrawUniformBuffer } from "./DrawUniformBuffer";
+import { PaeyentEventBuffer } from "./PaeyentEventBuffer";
 
 //TODO: cleanup composition of Model from Graphics, Drawing, and Menu Models
 //      ...but i prefer to see everything in one chunk at this point
@@ -69,7 +68,6 @@ export interface Model {
   num_pts: number;
   color: Float32Array;
   eventBuffer: PaeyentEventBuffer;
-  eventDataBuffer: PaeyentEventDataBuffer;
   pointerEventVoid: PointerEvent;
   zoom: number;
   zoom_last: number;
@@ -210,7 +208,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     num_pts: 0,
     color: init_color,
     eventBuffer: new PaeyentEventBuffer(graphics_model.maxRenderPasses),
-    eventDataBuffer: new PaeyentEventDataBuffer(graphics_model.maxRenderPasses),
     pointerEventVoid: new PointerEvent("none"),
     zoom,
     zoom_last: zoom,

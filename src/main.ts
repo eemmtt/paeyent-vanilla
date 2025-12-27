@@ -18,21 +18,19 @@ export function mainLoop(model: Model) {
 
     // loop over each PaeyentEvent and call their handler
     for (let i = 0; i < model.eventBuffer.top; i++) {
-      if (model.eventBuffer.id[i] === 0 /* PointerEvent */) {
-        ToolUpdaters[model.curr_tool * ToolStride + model.eventBuffer.type[i]](
-          model,
-          model.eventBuffer.dataIdx[i]
-        );
-      } else if (model.eventBuffer.id[i] === 1 /* UIEvent */) {
-        UIUpdaters[model.eventBuffer.type[i]](model);
+      if (model.eventBuffer.indexIsPointerEvent(i)) {
+        ToolUpdaters[
+          model.curr_tool * ToolStride + model.eventBuffer.getLookupId(i)
+        ](model, i);
+      } else if (model.eventBuffer.indexIsUIEvent(i)) {
+        UIUpdaters[model.eventBuffer.getLookupId(i)](model);
       } else {
         console.warn(
-          `mainLoop: Unhandled model.eventQueue.id ${model.eventBuffer.id[i]}`
+          `mainLoop: Unhandled event type ${model.eventBuffer.getEventType(i)}`
         );
       }
     }
     model.eventBuffer.clear();
-    model.eventDataBuffer.clear();
 
     // calc update time
     const updateAvg = model.updateTimes.push(

@@ -4,8 +4,7 @@ import {
 } from "../graphics/wgpu_initializers";
 import { mainLoop } from "../main";
 import { type Model } from "../types/Model";
-import type { PointerType } from "../types/PaeyentEvent";
-import { UIUpdaterLookup } from "./updaters";
+import type { PointerType } from "../types/PaeyentEventBuffer";
 
 export type EventHandler = (event: Event) => void;
 
@@ -126,47 +125,19 @@ export function handlers_init(model: Model, document: Document) {
     if (!event.repeat) {
       //console.log("key pressed: ", event.key);
       if (event.key == "m") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-menu"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-menu");
       } else if (event.key == "f") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-fan"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-fan");
       } else if (event.key == "l") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-line"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-line");
       } else if (event.key == "b") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-brush"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-brush");
       } else if (event.key == "z") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-zoom"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-zoom");
       } else if (event.key == "p") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["button-pan"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("button-pan");
       } else if (event.key == "h") {
-        model.eventBuffer.push(
-          1, // UIEvent
-          UIUpdaterLookup["home-view"],
-          -1 // No data
-        );
+        model.eventBuffer.pushUIEvent("home-view");
       } else {
         console.log(`onKeyDown: ${event.key}`);
       }
@@ -178,15 +149,11 @@ export function handlers_init(model: Model, document: Document) {
     const viewportX = (event as PointerEvent).clientX - rect.left;
     const viewportY = (event as PointerEvent).clientY - rect.top;
 
-    model.eventBuffer.push(
-      0, // PointerEvent
-      0, // PointerEventLookup["pointerdown"] === 0
-      model.eventDataBuffer.push(
-        viewportX,
-        viewportY,
-        (event as PointerEvent).pressure,
-        (event as PointerEvent).pointerType as PointerType
-      )
+    model.eventBuffer.pushPointerDownEvent(
+      (event as PointerEvent).pointerType as PointerType,
+      viewportX,
+      viewportY,
+      (event as PointerEvent).pressure
     );
   };
 
@@ -196,32 +163,20 @@ export function handlers_init(model: Model, document: Document) {
     const viewportY = (event as PointerEvent).clientY - rect.top;
 
     // overwrite repeated pointermoves
-    if (
-      model.eventBuffer.top > 0 && // array is not empty
-      model.eventBuffer.id[model.eventBuffer.top - 1] === 0 && // last item is a PointerEvent
-      model.eventBuffer.type[model.eventBuffer.top - 1] === 2 // last item is a "pointermove" event
-    ) {
-      model.eventBuffer.replaceLast(
-        0, // PointerEvent
-        2, // PointerEventLookup["pointermove"] === 2
-        model.eventDataBuffer.replaceLast(
-          viewportX,
-          viewportY,
-          (event as PointerEvent).pressure,
-          (event as PointerEvent).pointerType as PointerType
-        )
+    if (model.eventBuffer.lastEventIsPointerMove()) {
+      model.eventBuffer.replaceLastPointerMoveEvent(
+        (event as PointerEvent).pointerType as PointerType,
+        viewportX,
+        viewportY,
+        (event as PointerEvent).pressure
       );
     }
 
-    model.eventBuffer.push(
-      0, // PointerEvent
-      2, // PointerEventLookup["pointermove"] === 2
-      model.eventDataBuffer.push(
-        viewportX,
-        viewportY,
-        (event as PointerEvent).pressure,
-        (event as PointerEvent).pointerType as PointerType
-      )
+    model.eventBuffer.pushPointerMoveEvent(
+      (event as PointerEvent).pointerType as PointerType,
+      viewportX,
+      viewportY,
+      (event as PointerEvent).pressure
     );
   };
 
@@ -230,15 +185,11 @@ export function handlers_init(model: Model, document: Document) {
     const viewportX = (event as PointerEvent).clientX - rect.left;
     const viewportY = (event as PointerEvent).clientY - rect.top;
 
-    model.eventBuffer.push(
-      0, // PointerEvent
-      1, // PointerEventLookup["pointerup"] === 1
-      model.eventDataBuffer.push(
-        viewportX,
-        viewportY,
-        (event as PointerEvent).pressure,
-        (event as PointerEvent).pointerType as PointerType
-      )
+    model.eventBuffer.pushPointerUpEvent(
+      (event as PointerEvent).pointerType as PointerType,
+      viewportX,
+      viewportY,
+      (event as PointerEvent).pressure
     );
   };
 
@@ -253,256 +204,144 @@ export function handlers_init(model: Model, document: Document) {
   /* button-container events */
   model.menu_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.menu_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-menu"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-menu");
     }
   });
   model.brush_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.brush_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-brush"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-brush");
     }
   });
   model.fan_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.fan_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-fan"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-fan");
     }
   });
   model.line_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.line_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-line"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-line");
     }
   });
   model.home_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.home_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["home-view"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("home-view");
     }
   });
   model.pan_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.pan_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-pan"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-pan");
     }
   });
   model.zoom_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.zoom_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-zoom"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-zoom");
     }
   });
 
   /* modal events */
   model.modal_container.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_container) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-modal-container"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-modal-container");
     }
   });
   model.modal_close_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_close_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-modal-close"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-modal-close");
     }
   });
   model.radio_constraint_type_none.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_none) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-constraint-type-none"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-constraint-type-none");
     }
   });
   model.radio_constraint_type_time.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_time) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-constraint-type-time"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-constraint-type-time");
     }
   });
   model.constraint_type_time_minutes.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_minutes) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["input-constraint-time-minutes"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("input-constraint-time-minutes");
     }
   });
   model.constraint_type_time_seconds.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_time_seconds) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["input-constraint-time-seconds"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("input-constraint-time-seconds");
     }
   });
   model.radio_constraint_type_actions.addEventListener("change", (e) => {
     if (e.target === model.radio_constraint_type_actions) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-constraint-type-actions"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-constraint-type-actions");
     }
   });
   model.constraint_type_actions_count.addEventListener("change", (e) => {
     if (e.target === model.constraint_type_actions_count) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["input-constraint-actions-count"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("input-constraint-actions-count");
     }
   });
   model.radio_colorpicker_type_rgb.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_rgb) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-colorpicker-type-rgb"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-colorpicker-type-rgb");
     }
   });
   model.radio_colorpicker_type_hsv.addEventListener("change", (e) => {
     if (e.target === model.radio_colorpicker_type_hsv) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-colorpicker-type-hsv"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-colorpicker-type-hsv");
     }
   });
   model.radio_scratch_yes.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_yes) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-scratch-yes"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-scratch-yes");
     }
   });
   model.radio_scratch_no.addEventListener("change", (e) => {
     if (e.target === model.radio_scratch_no) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-scratch-no"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-scratch-no");
     }
   });
   model.radio_image_dimensions_auto.addEventListener("change", (e) => {
     if (e.target === model.radio_image_dimensions_auto) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-image-dimensions-auto"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-image-dimensions-auto");
     }
   });
   model.radio_image_dimensions_custom.addEventListener("change", (e) => {
     if (e.target === model.radio_image_dimensions_custom) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["radio-image-dimensions-custom"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("radio-image-dimensions-custom");
     }
   });
   model.image_dimensions_width.addEventListener("change", (e) => {
     if (e.target === model.image_dimensions_width) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["input-image-dimensions-width"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("input-image-dimensions-width");
     }
   });
   model.image_dimensions_height.addEventListener("change", (e) => {
     if (e.target === model.image_dimensions_height) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["input-image-dimensions-height"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("input-image-dimensions-height");
     }
   });
   model.modal_start_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_start_session_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-start-session"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-start-session");
     }
   });
   model.modal_end_session_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_end_session_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-end-session"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-end-session");
     }
   });
   model.modal_save_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_save_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-save"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-save");
     }
   });
   model.modal_share_button.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_share_button) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-share"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-share");
     }
   });
   model.modal_about_section.addEventListener("pointerdown", (e) => {
     if (e.target === model.modal_about_section) {
-      model.eventBuffer.push(
-        1, // UIEvent
-        UIUpdaterLookup["button-about"],
-        -1 // No data
-      );
+      model.eventBuffer.pushUIEvent("button-about");
     }
   });
 }
@@ -514,31 +353,18 @@ export function handlers_init(model: Model, document: Document) {
 
 export function onSliderRed(event: Event, model: Model) {
   if (event.target === model.slider_r) {
-    model.eventBuffer.push(
-      1, // UIEvent
-      UIUpdaterLookup["input-slider-red"],
-      -1 // No data
-    );
+    model.eventBuffer.pushUIEvent("input-slider-red");
   }
 }
 
 export function onSliderGreen(event: Event, model: Model) {
   if (event.target === model.slider_g) {
-    model.eventBuffer.push(
-      1, // UIEvent
-      UIUpdaterLookup["input-slider-green"],
-      -1 // No data
-    );
+    model.eventBuffer.pushUIEvent("input-slider-green");
   }
 }
 
 export function onSliderBlue(event: Event, model: Model) {
   if (event.target === model.slider_b) {
-    model.eventBuffer.push(
-      1, // UIEvent
-      UIUpdaterLookup["input-slider-blue"],
-      -1 // No data
-    );
+    model.eventBuffer.pushUIEvent("input-slider-blue");
   }
 }
-
