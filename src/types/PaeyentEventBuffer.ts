@@ -48,7 +48,7 @@ export class PaeyentEventBuffer {
 
   constructor(capacity: number = 256) {
     if (capacity > 32767 || capacity < 1) {
-      console.warn("DrawUniformBuffer capacity is int16 > 0");
+      console.warn("PaeyentEventBuffer capacity is int16 > 0");
       capacity = 256;
     }
     this.data = new ArrayBuffer(capacity * this.stride);
