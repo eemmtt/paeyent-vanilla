@@ -161,6 +161,9 @@ export interface Model {
   timeOut: number;
   timeoutId: number | null;
   rafId: number | null;
+  resizeDebounceTimeout: number | null;
+  RESIZE_DEBOUNCE_MS: number;
+  observer: ResizeObserver | null;
 }
 
 export type SessionState = "in-session" | "end-session";
@@ -241,6 +244,9 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     timeOut: 0,
     timeoutId: null,
     rafId: null,
+    resizeDebounceTimeout: null,
+    RESIZE_DEBOUNCE_MS: 500,
+    observer: null,
   };
 
   return {
