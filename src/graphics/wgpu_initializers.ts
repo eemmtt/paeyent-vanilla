@@ -125,6 +125,7 @@ export async function wgpu_init(
   );
 
   const drawUniformBuffer = new DrawUniformBuffer(device);
+  const historyBuffer = new DrawUniformBuffer(device, 73529); //~5mb = 68bytes * 73529
 
   const maxUniformBufferSize = device.limits.maxUniformBufferBindingSize;
   const maxRenderPasses = Math.floor(
@@ -168,6 +169,7 @@ export async function wgpu_init(
 
     render: wgpu_render,
     drawUniformBuffer,
+    historyBuffer,
     poly_buffer,
     poly_bindgroup,
     composite_uniform,
@@ -454,7 +456,7 @@ export function create_poly_resources(
   GPURenderPipeline,
   GPURenderPipeline,
   GPURenderPipeline,
-  GPURenderPipeline,
+  GPURenderPipeline
 ] {
   const poly_buffer = device.createBuffer({
     size: drawUniformBuffer.alignedSize * max_queued_renderpasses,

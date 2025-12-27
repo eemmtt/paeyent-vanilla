@@ -53,8 +53,8 @@ export class DrawUniformBuffer {
   readonly offsetTextureHeight = 64;
 
   constructor(device: GPUDevice, capacity: number = 256) {
-    if (capacity > 32767 || capacity < 1) {
-      console.warn("DrawUniformBuffer capacity is int16 > 0");
+    if (capacity > Number.MAX_SAFE_INTEGER || capacity < 1) {
+      console.warn("DrawUniformBuffer capacity must be a positive integer");
       capacity = 256;
     }
     this.data = new ArrayBuffer(capacity * this.stride);
@@ -381,6 +381,100 @@ export class DrawUniformBuffer {
       this.top * this.stride + this.offsetType,
       RenderPassLookup["clear-all"]
     );
+    this.top++;
+  }
+
+  pushFromBuffer(fromBuffer: DrawUniformBuffer, fromIdx: number) {
+    if (this.top === this.capacity - 1) {
+      console.warn(
+        "DrawUniformBuffer.pushFromBuffer(): recipient full, dropping event"
+      );
+      return;
+    }
+
+    if (fromIdx < 0 || fromIdx >= fromBuffer.top) {
+      console.warn(
+        "DrawUniformBuffer.pushFromBuffer(): fromIdx out of bounds",
+        fromIdx
+      );
+      return;
+    }
+
+    const fromByteOffset = fromIdx * this.stride;
+    const toByteOffset = this.top * this.stride;
+
+    // Copy the type (u8)
+    this.view.setUint8(
+      toByteOffset + this.offsetType,
+      fromBuffer.view.getUint8(fromByteOffset + fromBuffer.offsetType)
+    );
+
+    // Copy all f32 uniform values
+    this.setf32(
+      toByteOffset + this.offsetX0,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetX0)
+    );
+    this.setf32(
+      toByteOffset + this.offsetY0,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetY0)
+    );
+    this.setf32(
+      toByteOffset + this.offsetX1,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetX1)
+    );
+    this.setf32(
+      toByteOffset + this.offsetY1,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetY1)
+    );
+    this.setf32(
+      toByteOffset + this.offsetX2,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetX2)
+    );
+    this.setf32(
+      toByteOffset + this.offsetY2,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetY2)
+    );
+    this.setf32(
+      toByteOffset + this.offsetRed,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetRed)
+    );
+    this.setf32(
+      toByteOffset + this.offsetGreen,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetGreen)
+    );
+    this.setf32(
+      toByteOffset + this.offsetBlue,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetBlue)
+    );
+    this.setf32(
+      toByteOffset + this.offsetAlpha,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetAlpha)
+    );
+    this.setf32(
+      toByteOffset + this.offsetLineWidth,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetLineWidth)
+    );
+    this.setf32(
+      toByteOffset + this.offsetRadius,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetRadius)
+    );
+    this.setf32(
+      toByteOffset + this.offsetSoftness,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetSoftness)
+    );
+    this.setf32(
+      toByteOffset + this.offsetJitter,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetJitter)
+    );
+    this.setf32(
+      toByteOffset + this.offsetTextureWidth,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetTextureWidth)
+    );
+    this.setf32(
+      toByteOffset + this.offsetTextureHeight,
+      fromBuffer.getf32(fromByteOffset + fromBuffer.offsetTextureHeight)
+    );
+
     this.top++;
   }
 

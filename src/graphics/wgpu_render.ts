@@ -244,6 +244,8 @@ function onLineAppendBg(
     model.textureHeight
   );
 
+  model.historyBuffer.pushFromBuffer(model.drawUniformBuffer, dataIdx);
+
   model.device.queue.writeBuffer(
     model.poly_buffer,
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -344,6 +346,8 @@ function onFanAppendBg(
     model.textureWidth,
     model.textureHeight
   );
+
+  model.historyBuffer.pushFromBuffer(model.drawUniformBuffer, dataIdx);
 
   model.device.queue.writeBuffer(
     model.poly_buffer,

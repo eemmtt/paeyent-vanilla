@@ -41,6 +41,7 @@ export interface Model {
 
   render: RenderFunction;
   drawUniformBuffer: DrawUniformBuffer;
+  historyBuffer: DrawUniformBuffer;
   poly_buffer: GPUBuffer;
   poly_bindgroup: GPUBindGroup;
 

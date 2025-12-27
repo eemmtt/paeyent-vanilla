@@ -120,6 +120,7 @@ function updateButtonStartSession(model: Model) {
 
   //update modal body to inSession contents
   modalBodyToInSession(model);
+  model.historyBuffer.clear();
   model.drawUniformBuffer.pushClearAll();
 }
 
@@ -206,6 +207,13 @@ function updateButtonMenu(model: Model) {
     modal_close(model);
   } else {
     modal_open(model);
+    //TODO: remove history debugging after testing
+    console.log(
+      "Current history length:",
+      model.historyBuffer.top,
+      "/",
+      model.historyBuffer.capacity
+    );
   }
 }
 
