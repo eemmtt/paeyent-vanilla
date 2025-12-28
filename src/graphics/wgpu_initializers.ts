@@ -141,6 +141,11 @@ export async function wgpu_init(
     rectangle_pipeline,
   ] = create_poly_resources(device, format, drawUniformBuffer, maxRenderPasses);
 
+  // ensure texture initialization completes before first render
+  const encoder = device.createCommandEncoder();
+  device.queue.submit([encoder.finish()]);
+  await device.queue.onSubmittedWorkDone();
+
   console.log("Intialized WebGPU Context");
   return {
     canvas,
