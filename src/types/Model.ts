@@ -19,7 +19,6 @@ export interface Model {
   format: GPUTextureFormat;
   device: GPUDevice;
   surface: GPUCanvasContext;
-  is_surface_configured: Boolean;
   dpr: number;
   clientWidth: number;
   clientHeight: number;
@@ -27,8 +26,6 @@ export interface Model {
   deviceHeight: number;
   textureWidth: number;
   textureHeight: number;
-  viewportToTextureX: number;
-  viewportToTextureY: number;
 
   bg_texture: GPUTexture;
   fg_texture: GPUTexture;
@@ -40,6 +37,7 @@ export interface Model {
   maxRenderPasses: number;
 
   render: RenderFunction;
+  updateImageDimensions: (model: Model) => void;
   drawUniformBuffer: DrawUniformBuffer;
   historyBuffer: DrawUniformBuffer;
   poly_buffer: GPUBuffer;
@@ -188,7 +186,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   const menu_model = menu_build(settings, session_state, init_color);
   const graphics_model = await graphics_build(settings);
 
-  // TODO: it is hacky to resize outside of graphics_build()?
   const [zoom, texturePanX, texturePanY] = homeView(
     0.96,
     graphics_model.textureWidth,
@@ -221,6 +218,9 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
 
   // these handlers get initialized in main()
   const handlers = {
+    resizeDebounceTimeout: null,
+    RESIZE_DEBOUNCE_MS: 500,
+    observer: null,
     handleOnce: { once: true },
     onPointerDown: voidEventHandler,
     onPointerMove: voidEventHandler,
@@ -242,9 +242,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     timeOut: 0,
     timeoutId: null,
     rafId: null,
-    resizeDebounceTimeout: null,
-    RESIZE_DEBOUNCE_MS: 500,
-    observer: null,
   };
 
   return {

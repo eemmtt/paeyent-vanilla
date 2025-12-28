@@ -9,7 +9,6 @@ export interface GraphicsModel {
   format: GPUTextureFormat;
   device: GPUDevice;
   surface: GPUCanvasContext;
-  is_surface_configured: Boolean;
   dpr: number;
   clientWidth: number;
   clientHeight: number;
@@ -17,8 +16,6 @@ export interface GraphicsModel {
   deviceHeight: number;
   textureWidth: number;
   textureHeight: number;
-  viewportToTextureX: number;
-  viewportToTextureY: number;
 
   bg_texture: GPUTexture;
   fg_texture: GPUTexture;
@@ -30,6 +27,7 @@ export interface GraphicsModel {
   maxRenderPasses: number;
 
   render: RenderFunction;
+  updateImageDimensions: (model: Model) => void;
   drawUniformBuffer: DrawUniformBuffer;
   historyBuffer: DrawUniformBuffer;
   poly_buffer: GPUBuffer;

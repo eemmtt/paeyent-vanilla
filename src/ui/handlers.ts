@@ -122,8 +122,7 @@ export function handlers_init(model: Model, document: Document) {
   });
 
   model.onKeyDown = (event: KeyboardEvent) => {
-    if (!event.repeat) {
-      //console.log("key pressed: ", event.key);
+    if (!event.repeat && model.session_state === "in-session") {
       if (event.key == "m") {
         model.eventBuffer.pushUIEvent("button-menu");
       } else if (event.key == "f") {
@@ -138,6 +137,12 @@ export function handlers_init(model: Model, document: Document) {
         model.eventBuffer.pushUIEvent("button-pan");
       } else if (event.key == "h") {
         model.eventBuffer.pushUIEvent("home-view");
+      } else {
+        console.log(`onKeyDown: ${event.key}`);
+      }
+    } else if (!event.repeat && model.session_state === "end-session") {
+      if (event.key == "m") {
+        model.eventBuffer.pushUIEvent("button-menu");
       } else {
         console.log(`onKeyDown: ${event.key}`);
       }
@@ -259,12 +264,12 @@ export function handlers_init(model: Model, document: Document) {
       model.eventBuffer.pushUIEvent("radio-constraint-type-time");
     }
   });
-  model.constraint_type_time_minutes.addEventListener("change", (e) => {
+  model.constraint_type_time_minutes.addEventListener("input", (e) => {
     if (e.target === model.constraint_type_time_minutes) {
       model.eventBuffer.pushUIEvent("input-constraint-time-minutes");
     }
   });
-  model.constraint_type_time_seconds.addEventListener("change", (e) => {
+  model.constraint_type_time_seconds.addEventListener("input", (e) => {
     if (e.target === model.constraint_type_time_seconds) {
       model.eventBuffer.pushUIEvent("input-constraint-time-seconds");
     }
@@ -309,12 +314,12 @@ export function handlers_init(model: Model, document: Document) {
       model.eventBuffer.pushUIEvent("radio-image-dimensions-custom");
     }
   });
-  model.image_dimensions_width.addEventListener("change", (e) => {
+  model.image_dimensions_width.addEventListener("input", (e) => {
     if (e.target === model.image_dimensions_width) {
       model.eventBuffer.pushUIEvent("input-image-dimensions-width");
     }
   });
-  model.image_dimensions_height.addEventListener("change", (e) => {
+  model.image_dimensions_height.addEventListener("input", (e) => {
     if (e.target === model.image_dimensions_height) {
       model.eventBuffer.pushUIEvent("input-image-dimensions-height");
     }

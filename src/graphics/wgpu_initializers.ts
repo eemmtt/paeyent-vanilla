@@ -21,17 +21,17 @@ export async function wgpu_init(
   }
 
   if (!navigator.gpu) {
-    throw Error("WebGPU not supported");
+    throw Error("wgpu_init: WebGPU not supported");
   }
 
   const adapter = await navigator.gpu.requestAdapter();
   if (!adapter) {
-    throw Error("Couldn't request WebGPU adapter");
+    throw Error("wgpu_init: Couldn't request WebGPU adapter");
   }
 
   const device = await adapter.requestDevice();
   if (!device) {
-    throw Error("Failed to get WebGPU device");
+    throw Error("wgpu_init: Failed to get WebGPU device");
   }
 
   const dpr = window.devicePixelRatio || 1;
@@ -50,7 +50,7 @@ export async function wgpu_init(
 
   const context = canvas.getContext("webgpu");
   if (!context) {
-    throw Error("Failed to get WebGPU context from canvas");
+    throw Error("wgpu_init: Failed to get WebGPU context from canvas");
   }
   const format = navigator.gpu.getPreferredCanvasFormat();
   context.configure({
@@ -147,7 +147,6 @@ export async function wgpu_init(
     format,
     device,
     surface: context,
-    is_surface_configured: false,
     dpr,
     clientWidth: rect.width,
     clientHeight: rect.height,
@@ -155,8 +154,6 @@ export async function wgpu_init(
     deviceHeight: canvasDeviceHeight,
     textureWidth,
     textureHeight,
-    viewportToTextureX: textureWidth / canvasDeviceWidth,
-    viewportToTextureY: textureHeight / canvasDeviceHeight,
 
     bg_texture,
     fg_texture,
@@ -168,6 +165,7 @@ export async function wgpu_init(
     maxRenderPasses,
 
     render: wgpu_render,
+    updateImageDimensions: updateImageDimensions,
     drawUniformBuffer,
     historyBuffer,
     poly_buffer,
@@ -638,4 +636,105 @@ export function create_poly_resources(
     circle_pipeline,
     rectangle_pipeline,
   ];
+}
+
+export function updateImageDimensions(model: Model) {
+  if (
+    model.image_dimensions_type === "custom" &&
+    (model.image_width === null || model.image_height === null)
+  ) {
+    console.warn("updateImageDimensions: Received null custom image dimension");
+    return;
+  }
+
+  const imageWidth =
+    model.image_dimensions_type === "custom"
+      ? model.image_width!
+      : model.clientWidth * model.dpr;
+  const clampedWidth = Math.max(
+    1,
+    Math.min(imageWidth, model.device.limits.maxTextureDimension2D)
+  );
+  const imageHeight =
+    model.image_dimensions_type === "custom"
+      ? model.image_height!
+      : model.clientHeight * model.dpr;
+  const clampedHeight = Math.max(
+    1,
+    Math.min(imageHeight, model.device.limits.maxTextureDimension2D)
+  );
+
+  const [fg_texture, fg_texture_view] = create_texture(
+    navigator.gpu.getPreferredCanvasFormat(),
+    model.device,
+    clampedWidth,
+    clampedHeight,
+    "transparent"
+  );
+  const [bg_texture, bg_texture_view] = create_texture(
+    navigator.gpu.getPreferredCanvasFormat(),
+    model.device,
+    clampedWidth,
+    clampedHeight,
+    "white"
+  );
+
+  const composite_bindgroup_layout = model.device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {
+          type: "filtering",
+        },
+      },
+    ],
+  });
+
+  const composite_bindgroup = model.device.createBindGroup({
+    layout: composite_bindgroup_layout,
+    entries: [
+      { binding: 0, resource: bg_texture_view },
+      { binding: 1, resource: fg_texture_view },
+      { binding: 2, resource: model.an_texture_view },
+      { binding: 3, resource: model.composite_sampler },
+    ],
+  });
+
+  model.textureWidth = clampedWidth;
+  model.textureHeight = clampedHeight;
+  model.fg_texture = fg_texture;
+  model.fg_texture_view = fg_texture_view;
+  model.bg_texture = bg_texture;
+  model.bg_texture_view = bg_texture_view;
+  model.composite_bindgroup = composite_bindgroup;
+  model.composite_uniform.set_texture_width(clampedWidth);
+  model.composite_uniform.set_texture_height(clampedHeight);
 }

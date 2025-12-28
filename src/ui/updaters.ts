@@ -112,15 +112,20 @@ function updateButtonStartSession(model: Model) {
     model.menu_button,
     model.brush_button,
     model.fan_button,
-    model.line_button
+    model.line_button,
+    model.home_button,
+    model.pan_button,
+    model.zoom_button
   );
 
-  //close modal
   modal_close(model);
+  model.canvas.addEventListener("pointerdown", model.onPointerDown);
 
   //update modal body to inSession contents
   modalBodyToInSession(model);
+  model.updateImageDimensions(model);
   model.historyBuffer.clear();
+  updateHomeView(model);
   model.drawUniformBuffer.pushClearAll();
 }
 
@@ -131,10 +136,12 @@ function updateButtonEndSession(model: Model) {
   //      once color-picker and scratch-area are implemented
   model.button_container.replaceChildren(model.menu_button);
 
-  //close modal
   modal_close(model);
 
-  //TODO: deactivate tool, prevent tool selection events
+  ToolUpdaters[model.curr_tool * ToolStride + 3](model, -1); //Cancel curr tool
+  model.canvas.removeEventListener("pointerdown", model.onPointerDown);
+  updateHomeView(model);
+  model.drawUniformBuffer.pushClearFg();
 
   //update modal body to endSession contents
   modalBodyToEndSession(model);

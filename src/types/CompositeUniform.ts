@@ -87,6 +87,14 @@ export class CompositeUniform {
     this.data[this.offset_viewportHeight] = height;
   }
 
+  set_texture_width(width: number) {
+    this.data[this.offset_textureWidth] = width;
+  }
+
+  set_texture_height(height: number) {
+    this.data[this.offset_textureHeight] = height;
+  }
+
   set_grid_min_zoom(zoom: number) {
     this.data[this.offset_gridMinZoom] = zoom;
   }
