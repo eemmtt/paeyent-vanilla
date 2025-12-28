@@ -51,7 +51,6 @@ export function mainLoop(model: Model) {
   }, model.timeOut);
 }
 
-//TODO: prevent page refresh
 //TODO: add scratch area, color picker
 //TODO: add constraints
 async function main() {
@@ -62,8 +61,8 @@ async function main() {
     color_picker_type: "rgb",
     scratch_area: false,
     image_dimensions_type: "custom",
-    image_width: 800,
-    image_height: 300,
+    image_width: 2048,
+    image_height: 2048,
   };
 
   const model = await model_init(settings);

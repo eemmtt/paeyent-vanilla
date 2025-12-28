@@ -198,6 +198,11 @@ export function handlers_init(model: Model, document: Document) {
     );
   };
 
+  window.addEventListener("beforeunload", (e) => {
+    e.preventDefault();
+    e.returnValue = true;
+  });
+
   window.addEventListener("keydown", model.onKeyDown);
   model.canvas.addEventListener("pointerdown", model.onPointerDown);
 
