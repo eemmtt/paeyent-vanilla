@@ -24,6 +24,7 @@ struct VertexOutput {
     @location(0) color: vec4<f32>,
 }
 
+//TODO: fix bug where line offsets are distored by non-square textures
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     var output: VertexOutput;
