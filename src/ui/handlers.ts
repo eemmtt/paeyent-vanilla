@@ -105,30 +105,6 @@ export function handlers_init(model: Model, document: Document) {
   // observer.observe(model.canvas, { box: "device-pixel-content-box" });
   model.observer.observe(model.canvas, { box: "content-box" });
 
-  // adding a timeout to mainLoop complicated matters
-  // and added the requirement of cleaning up the loop state
-  // when navigating to and from the window
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      // cancel pending loops
-      if (model.timeoutId !== null) {
-        clearTimeout(model.timeoutId);
-        model.timeoutId = null;
-      }
-      if (model.rafId !== null) {
-        cancelAnimationFrame(model.rafId);
-        model.rafId = null;
-      }
-    } else if (document.visibilityState === "visible") {
-      // reset frame timing
-      model.frameStart = performance.now();
-      model.updateStart = performance.now();
-      model.timeOut = 0;
-
-      mainLoop(model);
-    }
-  });
-
   model.onKeyDown = (event: KeyboardEvent) => {
     if (!event.repeat && model.session_state === "in-session") {
       if (event.key == "m") {

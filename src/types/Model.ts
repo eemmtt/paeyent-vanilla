@@ -5,7 +5,6 @@ import {
   type RenderFunction,
 } from "../graphics/Graphics";
 import { voidEventHandler } from "../ui/handlers";
-import { RollingAverageBuffer } from "./RollingAverageBuffer";
 import type { CompositeUniform } from "./CompositeUniform";
 import { homeView } from "../ui/updaters";
 import type { DrawUniformBuffer } from "./DrawUniformBuffer";
@@ -63,6 +62,7 @@ export interface Model {
   rpd_replaceComposite: GPURenderPassDescriptor;
 
   /* drawing state */
+  _mainLoop: () => void;
   curr_tool: number; //used to index into toolhandlers. See tool.ts
   last_tool: number; //used to index into toolhandlers. See tool.ts
   is_drawing: boolean;
@@ -154,17 +154,6 @@ export interface Model {
   //onSliderRed: (event: Event) => void;
   //onSliderGreen: (event: Event) => void;
   //onSliderBlue: (event: Event) => void;
-
-  /* performance */
-  frameStart: number;
-  updateStart: number;
-  renderStart: number;
-  frameTimes: RollingAverageBuffer;
-  updateTimes: RollingAverageBuffer;
-  renderTimes: RollingAverageBuffer;
-  timeOut: number;
-  timeoutId: number | null;
-  rafId: number | null;
   resizeDebounceTimeout: number | null;
   RESIZE_DEBOUNCE_MS: number;
   observer: ResizeObserver | null;
@@ -202,6 +191,9 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
   );
 
   const drawing_model = {
+    _mainLoop: () => {
+      console.warn("_mainLoop not initialized");
+    },
     curr_tool: 0,
     last_tool: 0,
     is_drawing: false,
@@ -239,18 +231,6 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     // onSliderBlue: voidEventHandler,
   };
 
-  const perf = {
-    frameStart: performance.now(),
-    updateStart: 0,
-    renderStart: 0,
-    frameTimes: new RollingAverageBuffer(100),
-    updateTimes: new RollingAverageBuffer(100),
-    renderTimes: new RollingAverageBuffer(100),
-    timeOut: 0,
-    timeoutId: null,
-    rafId: null,
-  };
-
   return {
     ...graphics_model,
     ...drawing_model,
@@ -258,6 +238,5 @@ export async function model_init(settings: SessionSettings): Promise<Model> {
     session_state: "in-session",
     ...settings,
     ...handlers,
-    ...perf,
   };
 }
