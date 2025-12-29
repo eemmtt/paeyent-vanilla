@@ -74,6 +74,14 @@ export function handlers_init(model: Model, document: Document) {
       model.an_texture_view = new_an_texture_view;
       updateCompositeBindgroup(model, model.an_texture_view);
 
+      // update render pass descriptors with new annotation texture view
+      (
+        model.rpd_replaceAnno.colorAttachments as GPURenderPassColorAttachment[]
+      )[0].view = new_an_texture_view;
+      (
+        model.rpd_appendAnno.colorAttachments as GPURenderPassColorAttachment[]
+      )[0].view = new_an_texture_view;
+
       // update uniforms
       model.composite_uniform.updateDimensions(model);
 

@@ -55,6 +55,13 @@ export interface Model {
   rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
 
+  rpd_replaceFg: GPURenderPassDescriptor;
+  rpd_replaceBg: GPURenderPassDescriptor;
+  rpd_replaceAnno: GPURenderPassDescriptor;
+  rpd_appendBg: GPURenderPassDescriptor;
+  rpd_appendAnno: GPURenderPassDescriptor;
+  rpd_replaceComposite: GPURenderPassDescriptor;
+
   /* drawing state */
   curr_tool: number; //used to index into toolhandlers. See tool.ts
   last_tool: number; //used to index into toolhandlers. See tool.ts

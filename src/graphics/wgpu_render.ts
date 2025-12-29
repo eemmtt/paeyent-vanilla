@@ -66,17 +66,12 @@ export function wgpu_render(model: Model) {
       model.composite_uniform.data.buffer
     );
 
-    const pass = encoder.beginRenderPass({
-      label: "Composite Render Pass",
-      colorAttachments: [
-        {
-          view,
-          //clearValue: [0, 0, 0, 0],
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    });
+    (
+      model.rpd_replaceComposite
+        .colorAttachments as GPURenderPassColorAttachment[]
+    )[0].view = view;
+
+    const pass = encoder.beginRenderPass(model.rpd_replaceComposite);
     pass.setPipeline(model.composite_pipeline);
     pass.setBindGroup(0, model.composite_bindgroup);
     pass.setBindGroup(1, model.composite_uniform_bindgroup);
@@ -89,34 +84,11 @@ export function wgpu_render(model: Model) {
 }
 
 function onClearFg(model: Model, encoder: GPUCommandEncoder, _dataIdx: number) {
-  encoder
-    .beginRenderPass({
-      label: "Clear Foreground",
-      colorAttachments: [
-        {
-          view: model.fg_texture_view,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceFg).end();
 }
 
 function onClearBg(model: Model, encoder: GPUCommandEncoder, _dataIdx: number) {
-  encoder
-    .beginRenderPass({
-      label: "Clear Background",
-      colorAttachments: [
-        {
-          view: model.bg_texture_view,
-          clearValue: model.clear_color,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceBg).end();
 }
 
 function onClearAnno(
@@ -124,18 +96,7 @@ function onClearAnno(
   encoder: GPUCommandEncoder,
   _dataIdx: number
 ) {
-  encoder
-    .beginRenderPass({
-      label: "Clear Annotation",
-      colorAttachments: [
-        {
-          view: model.an_texture_view,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceAnno).end();
 }
 
 function onClearAll(
@@ -143,45 +104,9 @@ function onClearAll(
   encoder: GPUCommandEncoder,
   _dataIdx: number
 ) {
-  encoder
-    .beginRenderPass({
-      label: "Clear Annotation",
-      colorAttachments: [
-        {
-          view: model.an_texture_view,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
-
-  encoder
-    .beginRenderPass({
-      label: "Clear Foreground",
-      colorAttachments: [
-        {
-          view: model.fg_texture_view,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
-
-  encoder
-    .beginRenderPass({
-      label: "Clear Background",
-      colorAttachments: [
-        {
-          view: model.bg_texture_view,
-          clearValue: model.clear_color,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceAnno).end();
+  encoder.beginRenderPass(model.rpd_replaceFg).end();
+  encoder.beginRenderPass(model.rpd_replaceBg).end();
 }
 
 function onLineReplaceFg(
@@ -209,17 +134,7 @@ function onLineReplaceFg(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Foreground Clear and Draw",
-    colorAttachments: [
-      {
-        view: model.fg_texture_view,
-        loadOp: "clear" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_replaceFg);
   renderpass.setPipeline(model.line_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -255,30 +170,9 @@ function onLineAppendBg(
     model.drawUniformBuffer.uniformStride
   );
 
-  encoder
-    .beginRenderPass({
-      label: "Clear Foreground",
-      colorAttachments: [
-        {
-          view: model.fg_texture_view,
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceFg).end();
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Draw Background",
-    colorAttachments: [
-      {
-        view: model.bg_texture_view,
-        loadOp: "load" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_appendBg);
   renderpass.setPipeline(model.line_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -312,17 +206,7 @@ function onFanReplaceFg(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Foreground Clear and Draw",
-    colorAttachments: [
-      {
-        view: model.fg_texture_view,
-        loadOp: "clear" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_replaceFg);
   renderpass.setPipeline(model.fan_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -358,31 +242,9 @@ function onFanAppendBg(
     model.drawUniformBuffer.uniformStride
   );
 
-  encoder
-    .beginRenderPass({
-      label: "Foreground Clear",
-      colorAttachments: [
-        {
-          view: model.fg_texture_view,
-          //clearValue: [0, 0, 0, 0],
-          loadOp: "clear" as GPULoadOp,
-          storeOp: "store" as GPUStoreOp,
-        },
-      ],
-    })
-    .end();
+  encoder.beginRenderPass(model.rpd_replaceFg).end();
 
-  const renderpass = encoder.beginRenderPass({
-    label: "BG Render Pass",
-    colorAttachments: [
-      {
-        view: model.bg_texture_view,
-        loadOp: "load" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_appendBg);
   renderpass.setPipeline(model.fan_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -392,17 +254,17 @@ function onFanAppendBg(
 }
 
 function onBrushReplaceFg(
-  model: Model,
-  encoder: GPUCommandEncoder,
-  dataIdx: number
+  _model: Model,
+  _encoder: GPUCommandEncoder,
+  _dataIdx: number
 ) {
   console.warn("onBrushFg not implemented");
   return;
 }
 function onBrushAppendBg(
-  model: Model,
-  encoder: GPUCommandEncoder,
-  dataIdx: number
+  _model: Model,
+  _encoder: GPUCommandEncoder,
+  _dataIdx: number
 ) {
   console.warn("onBrushBg not implemented");
   return;
@@ -433,18 +295,7 @@ function onRectangleReplaceAnno(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Rectangle Replace Anno",
-    colorAttachments: [
-      {
-        view: model.an_texture_view,
-        clearValue: [0, 0, 0, 0],
-        loadOp: "clear" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_replaceAnno);
   renderpass.setPipeline(model.rectangle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -478,17 +329,7 @@ function onRectangleAppendAnno(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Rectangle Append Anno",
-    colorAttachments: [
-      {
-        view: model.an_texture_view,
-        loadOp: "load" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_appendAnno);
   renderpass.setPipeline(model.rectangle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -522,18 +363,7 @@ function onCircleAppendAnno(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Circle Append Anno",
-    colorAttachments: [
-      {
-        view: model.an_texture_view,
-        //clearValue: [0, 0, 0, 0],
-        loadOp: "load" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_appendAnno);
   renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,
@@ -567,18 +397,7 @@ function onCircleReplaceAnno(
     model.drawUniformBuffer.uniformStride
   );
 
-  const renderpass = encoder.beginRenderPass({
-    label: "Circle Replace Anno",
-    colorAttachments: [
-      {
-        view: model.an_texture_view,
-        clearValue: [0, 0, 0, 0],
-        loadOp: "clear" as GPULoadOp,
-        storeOp: "store" as GPUStoreOp,
-      },
-    ],
-  });
-
+  const renderpass = encoder.beginRenderPass(model.rpd_replaceAnno);
   renderpass.setPipeline(model.circle_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,

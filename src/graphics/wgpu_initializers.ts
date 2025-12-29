@@ -141,6 +141,73 @@ export async function wgpu_init(
     rectangle_pipeline,
   ] = create_poly_resources(device, format, drawUniformBuffer, maxRenderPasses);
 
+  const rpd_replaceFg: GPURenderPassDescriptor = {
+    label: "Replace Foreground",
+    colorAttachments: [
+      {
+        view: fg_texture_view,
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_replaceBg: GPURenderPassDescriptor = {
+    label: "Replace Background",
+    colorAttachments: [
+      {
+        view: bg_texture_view,
+        clearValue: clear_color,
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_replaceAnno: GPURenderPassDescriptor = {
+    label: "Replace Annotation",
+    colorAttachments: [
+      {
+        view: an_texture_view,
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_appendBg: GPURenderPassDescriptor = {
+    label: "Append Background",
+    colorAttachments: [
+      {
+        view: bg_texture_view,
+        loadOp: "load",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_appendAnno: GPURenderPassDescriptor = {
+    label: "Append Annotation",
+    colorAttachments: [
+      {
+        view: an_texture_view,
+        loadOp: "load",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_replaceComposite: GPURenderPassDescriptor = {
+    label: "Replace Composite",
+    colorAttachments: [
+      {
+        view: context.getCurrentTexture().createView(),
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
   // ensure texture initialization completes before first render
   const encoder = device.createCommandEncoder();
   device.queue.submit([encoder.finish()]);
@@ -186,6 +253,13 @@ export async function wgpu_init(
     composite_pipeline,
     composite_bindgroup,
     composite_sampler,
+
+    rpd_replaceFg,
+    rpd_replaceBg,
+    rpd_replaceAnno,
+    rpd_appendBg,
+    rpd_appendAnno,
+    rpd_replaceComposite,
   };
 }
 
@@ -742,4 +816,15 @@ export function updateImageDimensions(model: Model) {
   model.composite_bindgroup = composite_bindgroup;
   model.composite_uniform.set_texture_width(clampedWidth);
   model.composite_uniform.set_texture_height(clampedHeight);
+
+  // update render pass descriptors with new texture views
+  (
+    model.rpd_replaceFg.colorAttachments as GPURenderPassColorAttachment[]
+  )[0].view = fg_texture_view;
+  (
+    model.rpd_replaceBg.colorAttachments as GPURenderPassColorAttachment[]
+  )[0].view = bg_texture_view;
+  (
+    model.rpd_appendBg.colorAttachments as GPURenderPassColorAttachment[]
+  )[0].view = bg_texture_view;
 }

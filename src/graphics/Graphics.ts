@@ -44,6 +44,13 @@ export interface GraphicsModel {
   circle_pipeline: GPURenderPipeline;
   rectangle_pipeline: GPURenderPipeline;
   composite_pipeline: GPURenderPipeline;
+
+  rpd_replaceFg: GPURenderPassDescriptor;
+  rpd_replaceBg: GPURenderPassDescriptor;
+  rpd_replaceAnno: GPURenderPassDescriptor;
+  rpd_appendBg: GPURenderPassDescriptor;
+  rpd_appendAnno: GPURenderPassDescriptor;
+  rpd_replaceComposite: GPURenderPassDescriptor;
 }
 
 export type Color = [number, number, number, number];
