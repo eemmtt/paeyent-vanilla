@@ -40,9 +40,9 @@ export class CompositeUniform {
     this.data[this.offset_viewportWidth] = viewportDeviceWidth; //in dev px
     this.data[this.offset_viewportHeight] = viewportDeviceHeight; //in dev px
     this.data[this.offset_gridMinZoom] = 10;
-    this.data[this.offset_backgroundColor_r] = 0.3;
-    this.data[this.offset_backgroundColor_g] = 0.3;
-    this.data[this.offset_backgroundColor_b] = 0.3;
+    this.data[this.offset_backgroundColor_r] = 0.2;
+    this.data[this.offset_backgroundColor_g] = 0.2;
+    this.data[this.offset_backgroundColor_b] = 0.2;
     this.data[this.offset_gridColor_r] = 0;
     this.data[this.offset_gridColor_g] = 0;
     this.data[this.offset_gridColor_b] = 0;
