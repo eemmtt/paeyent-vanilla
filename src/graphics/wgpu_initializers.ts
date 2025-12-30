@@ -3,14 +3,17 @@ import lineShaderCode from "../shaders/polyline.wgsl?raw";
 import fanShaderCode from "../shaders/polyfan.wgsl?raw";
 import circleShaderCode from "../shaders/circle.wgsl?raw";
 import rectangleShaderCode from "../shaders/rectangle.wgsl?raw";
+import scratchShaderCode from "../shaders/scratch_cell.wgsl?raw";
+import scratchGridShaderCode from "../shaders/scratch_grid.wgsl?raw";
+import scratchCompositeShaderCode from "../shaders/scratch_composite.wgsl?raw";
 
 import { CompositeUniform } from "../types/CompositeUniform";
 import type { GraphicsModel, Color } from "./Graphics";
 import { wgpu_render } from "./wgpu_render";
-import type { Model, SessionSettings } from "../types/Model";
+import { model_init, type Model, type SessionSettings } from "../types/Model";
 import { DrawUniformBuffer } from "../types/DrawUniformBuffer";
 
-export type FillStyle = "transparent" | "white";
+export type FillStyle = "transparent" | "white" | "clearColor";
 
 export async function wgpu_init(
   canvas: HTMLCanvasElement,
@@ -82,7 +85,7 @@ export async function wgpu_init(
     device,
     textureWidth,
     textureHeight,
-    "white"
+    "clearColor"
   );
   const [fg_texture, fg_texture_view] = create_texture(
     format,
@@ -99,7 +102,7 @@ export async function wgpu_init(
     "transparent"
   );
 
-  const clear_color: Color = [1, 1, 1, 1];
+  const clear_color: Color = [0.6, 0.6, 0.6, 1];
 
   const composite_uniform = new CompositeUniform(
     device,
@@ -208,6 +211,30 @@ export async function wgpu_init(
     ],
   };
 
+  // Initialize scratch resources if scratch area is enabled
+  let scratchResources: ScratchResources | undefined;
+  let scratch_canvas: HTMLCanvasElement | undefined;
+  if (settings.scratch_area) {
+    const scratch_container =
+      document.getElementsByClassName("scratch-container")[0];
+    if (scratch_container) {
+      scratch_canvas = document.createElement("canvas");
+      scratch_canvas.style.width = "100%";
+      scratch_canvas.style.height = "100%";
+      scratch_canvas.style.display = "block";
+      scratch_container.appendChild(scratch_canvas);
+
+      scratchResources = create_scratch_resources(
+        device,
+        format,
+        scratch_canvas,
+        poly_buffer,
+        drawUniformBuffer,
+        clear_color
+      );
+    }
+  }
+
   // ensure texture initialization completes before first render
   const encoder = device.createCommandEncoder();
   device.queue.submit([encoder.finish()]);
@@ -260,6 +287,22 @@ export async function wgpu_init(
     rpd_appendBg,
     rpd_appendAnno,
     rpd_replaceComposite,
+
+    // Scratch area resources (optional)
+    scratch_canvas,
+    scratch_surface: scratchResources?.context,
+    scratch_texture: scratchResources?.texture,
+    scratch_texture_view: scratchResources?.texture_view,
+    scratch_pipeline: scratchResources?.pipeline,
+    scratch_grid_pipeline: scratchResources?.grid_pipeline,
+    scratch_composite_pipeline: scratchResources?.composite_pipeline,
+    scratch_bindgroup: scratchResources?.bindgroup,
+    scratch_composite_bindgroup: scratchResources?.composite_bindgroup,
+    scratch_rpd_clear: scratchResources?.rpd_clear,
+    scratch_rpd_append: scratchResources?.rpd_append,
+    scratch_rpd_composite: scratchResources?.rpd_composite,
+    scratch_width: scratchResources?.width,
+    scratch_height: scratchResources?.height,
   };
 }
 
@@ -284,7 +327,7 @@ export function create_texture(
   };
   let texture = device.createTexture(texture_desc);
 
-  if (fill == "white") {
+  if (fill === "white") {
     const data = new Uint8Array(textureWidth * textureHeight * 4).fill(255);
 
     device.queue.writeTexture(
@@ -301,8 +344,31 @@ export function create_texture(
         depthOrArrayLayers: 1,
       }
     );
-  } else if (fill == "transparent") {
+  } else if (fill === "transparent") {
     const data = new Uint8Array(textureWidth * textureHeight * 4).fill(0);
+
+    device.queue.writeTexture(
+      { texture: texture },
+      data,
+      {
+        offset: 0,
+        bytesPerRow: 4 * textureWidth,
+        rowsPerImage: textureHeight,
+      },
+      {
+        width: textureWidth,
+        height: textureHeight,
+        depthOrArrayLayers: 1,
+      }
+    );
+  } else if (fill === "clearColor") {
+    const data = new Uint8Array(textureWidth * textureHeight * 4);
+    for (let i = 0; i < textureWidth * textureHeight; i++) {
+      data[i * 4 + 0] = 153;
+      data[i * 4 + 1] = 153;
+      data[i * 4 + 2] = 153;
+      data[i * 4 + 3] = 255;
+    }
 
     device.queue.writeTexture(
       { texture: texture },
@@ -755,7 +821,7 @@ export function updateImageDimensions(model: Model) {
     model.device,
     clampedWidth,
     clampedHeight,
-    "white"
+    "clearColor"
   );
 
   const composite_bindgroup_layout = model.device.createBindGroupLayout({
@@ -827,4 +893,228 @@ export function updateImageDimensions(model: Model) {
   (
     model.rpd_appendBg.colorAttachments as GPURenderPassColorAttachment[]
   )[0].view = bg_texture_view;
+}
+
+export interface ScratchResources {
+  canvas: HTMLCanvasElement;
+  context: GPUCanvasContext;
+  texture: GPUTexture;
+  texture_view: GPUTextureView;
+  pipeline: GPURenderPipeline;
+  grid_pipeline: GPURenderPipeline;
+  composite_pipeline: GPURenderPipeline;
+  bindgroup: GPUBindGroup;
+  composite_bindgroup: GPUBindGroup;
+  rpd_clear: GPURenderPassDescriptor;
+  rpd_append: GPURenderPassDescriptor;
+  rpd_composite: GPURenderPassDescriptor;
+  width: number;
+  height: number;
+}
+
+export function create_scratch_resources(
+  device: GPUDevice,
+  format: GPUTextureFormat,
+  canvas: HTMLCanvasElement,
+  poly_buffer: GPUBuffer,
+  drawUniformBuffer: DrawUniformBuffer,
+  clearColor: Color
+): ScratchResources {
+  const context = canvas.getContext("webgpu");
+  if (!context) {
+    throw Error("Failed to get WebGPU context for scratch canvas");
+  }
+
+  context.configure({ device, format });
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(1, rect.width * dpr);
+  const height = Math.max(1, rect.height * dpr);
+
+  canvas.width = width;
+  canvas.height = height;
+
+  // Create texture for scratch area
+  const [texture, texture_view] = create_texture(
+    format,
+    device,
+    width,
+    height,
+    "clearColor"
+  );
+
+  // Create shader modules
+  const scratch_shader = device.createShaderModule({
+    label: "scratch cell shader",
+    code: scratchShaderCode,
+  });
+
+  const grid_shader = device.createShaderModule({
+    label: "scratch grid shader",
+    code: scratchGridShaderCode,
+  });
+
+  // Create poly_bindgroup_layout (same pattern as main canvas)
+  const poly_bindgroup_layout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: "uniform",
+          hasDynamicOffset: true,
+        },
+      },
+    ],
+  });
+
+  const bindgroup = device.createBindGroup({
+    layout: poly_bindgroup_layout,
+    entries: [
+      {
+        binding: 0,
+        resource: {
+          buffer: poly_buffer,
+          offset: 0,
+          size: drawUniformBuffer.alignedSize,
+        },
+      },
+    ],
+  });
+
+  // Create pipeline layout
+  const pipeline_layout = device.createPipelineLayout({
+    bindGroupLayouts: [poly_bindgroup_layout],
+  });
+
+  const pipeline = device.createRenderPipeline({
+    layout: pipeline_layout,
+    vertex: { module: scratch_shader, entryPoint: "vs_main" },
+    fragment: {
+      module: scratch_shader,
+      entryPoint: "fs_main",
+      targets: [{ format }],
+    },
+    primitive: { topology: "triangle-list" },
+  });
+
+  const grid_pipeline = device.createRenderPipeline({
+    layout: pipeline_layout,
+    vertex: { module: grid_shader, entryPoint: "vs_main" },
+    fragment: {
+      module: grid_shader,
+      entryPoint: "fs_main",
+      targets: [{ format }],
+    },
+    primitive: { topology: "triangle-list" },
+  });
+
+  // Create composite shader and pipeline for blitting scratch texture to swapchain
+  const composite_shader = device.createShaderModule({
+    label: "scratch composite shader",
+    code: scratchCompositeShaderCode,
+  });
+
+  const composite_bindgroup_layout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: "float",
+          viewDimension: "2d",
+          multisampled: false,
+        },
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: { type: "filtering" },
+      },
+    ],
+  });
+
+  const composite_pipeline_layout = device.createPipelineLayout({
+    bindGroupLayouts: [composite_bindgroup_layout],
+  });
+
+  const composite_pipeline = device.createRenderPipeline({
+    layout: composite_pipeline_layout,
+    vertex: { module: composite_shader, entryPoint: "vs_main" },
+    fragment: {
+      module: composite_shader,
+      entryPoint: "fs_main",
+      targets: [{ format }],
+    },
+    primitive: { topology: "triangle-strip" },
+  });
+
+  const sampler = device.createSampler({
+    addressModeU: "clamp-to-edge",
+    addressModeV: "clamp-to-edge",
+    magFilter: "linear",
+    minFilter: "linear",
+  });
+
+  const composite_bindgroup = device.createBindGroup({
+    layout: composite_bindgroup_layout,
+    entries: [
+      { binding: 0, resource: texture_view },
+      { binding: 1, resource: sampler },
+    ],
+  });
+
+  // Render pass descriptors
+  const rpd_clear: GPURenderPassDescriptor = {
+    label: "Scratch Clear",
+    colorAttachments: [
+      {
+        view: texture_view,
+        clearValue: clearColor,
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  const rpd_append: GPURenderPassDescriptor = {
+    label: "Scratch Append",
+    colorAttachments: [
+      {
+        view: texture_view,
+        loadOp: "load",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  // Render pass for compositing to swapchain (view will be set each frame)
+  const rpd_composite: GPURenderPassDescriptor = {
+    label: "Scratch Composite",
+    colorAttachments: [
+      {
+        view: texture_view, // placeholder, will be replaced with swapchain view
+        loadOp: "clear",
+        storeOp: "store",
+      },
+    ],
+  };
+
+  return {
+    canvas,
+    context,
+    texture,
+    texture_view,
+    pipeline,
+    grid_pipeline,
+    composite_pipeline,
+    bindgroup,
+    composite_bindgroup,
+    rpd_clear,
+    rpd_append,
+    rpd_composite,
+    width,
+    height,
+  };
 }

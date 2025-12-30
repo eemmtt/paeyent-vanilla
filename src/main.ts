@@ -30,7 +30,6 @@ export function mainLoop(model: Model) {
   requestAnimationFrame(model._mainLoop);
 }
 
-//TODO: add scratch area, color picker
 //TODO: add constraints
 //TODO: load options from local storage if exists
 async function main() {
@@ -38,7 +37,7 @@ async function main() {
   const settings: SessionSettings = {
     constraint_type: "none",
     color_picker_type: "rgb",
-    scratch_area: false,
+    scratch_area: true,
     image_dimensions_type: "custom",
     image_width: 2048,
     image_height: 2048,
@@ -47,6 +46,7 @@ async function main() {
   const model = await model_init(settings);
   handlers_init(model, document);
 
+  /*
   //debugging cross
   model.drawUniformBuffer.pushLineAppendBg(
     0,
@@ -67,6 +67,7 @@ async function main() {
     1,
     0
   );
+  */
 
   /* start update + render loop */
   model._mainLoop = () => {

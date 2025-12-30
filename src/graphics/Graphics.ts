@@ -51,6 +51,22 @@ export interface GraphicsModel {
   rpd_appendBg: GPURenderPassDescriptor;
   rpd_appendAnno: GPURenderPassDescriptor;
   rpd_replaceComposite: GPURenderPassDescriptor;
+
+  /* scratch area (optional) */
+  scratch_canvas?: HTMLCanvasElement;
+  scratch_surface?: GPUCanvasContext;
+  scratch_texture?: GPUTexture;
+  scratch_texture_view?: GPUTextureView;
+  scratch_pipeline?: GPURenderPipeline;
+  scratch_grid_pipeline?: GPURenderPipeline;
+  scratch_composite_pipeline?: GPURenderPipeline;
+  scratch_bindgroup?: GPUBindGroup;
+  scratch_composite_bindgroup?: GPUBindGroup;
+  scratch_rpd_clear?: GPURenderPassDescriptor;
+  scratch_rpd_append?: GPURenderPassDescriptor;
+  scratch_rpd_composite?: GPURenderPassDescriptor;
+  scratch_width?: number;
+  scratch_height?: number;
 }
 
 export type Color = [number, number, number, number];

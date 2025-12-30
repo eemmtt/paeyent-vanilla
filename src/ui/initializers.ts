@@ -17,6 +17,13 @@ export function menu_build(
     throw Error("color_picker_build: Failed to query color-picker element");
   }
 
+  const scratch_container = document.getElementsByClassName(
+    "scratch-container"
+  )[0] as HTMLElement;
+  if (!scratch_container) {
+    throw Error("build_menu: Failed to query scratch-container");
+  }
+
   const button_container =
     document.getElementsByClassName("button-container")[0];
   if (!button_container) {
@@ -28,6 +35,22 @@ export function menu_build(
   const [color_picker, color_preview, slider_r, slider_g, slider_b] =
     color_picker_build(settings, init_color);
   color_picker_container.appendChild(color_picker);
+
+  /* handle scratch container and color preview placement */
+  if (settings.scratch_area) {
+    // Move color preview to scratch container, centered vertically over canvas
+    scratch_container.style.position = "relative";
+    color_preview.style.position = "absolute";
+    color_preview.style.top = "50%";
+    color_preview.style.left = "0";
+    color_preview.style.right = "0";
+    color_preview.style.transform = "translateY(-50%)";
+    color_preview.style.pointerEvents = "none";
+    scratch_container.appendChild(color_preview);
+  } else {
+    // Remove scratch container from DOM
+    scratch_container.remove();
+  }
 
   /* menu button */
   const menu_button = document.createElement("button");
@@ -157,6 +180,7 @@ export function menu_build(
 
   return {
     menu_container,
+    scratch_container,
     color_picker_container,
     button_container,
     modal_container,
@@ -588,7 +612,7 @@ function color_picker_build(
   HTMLDivElement,
   HTMLInputElement,
   HTMLInputElement,
-  HTMLInputElement,
+  HTMLInputElement
 ] {
   const color_picker = document.createElement("div");
   if (settings.color_picker_type == "rgb") {

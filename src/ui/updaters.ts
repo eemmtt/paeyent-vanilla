@@ -106,8 +106,37 @@ function updateButtonStartSession(model: Model) {
   // TODO: Actually start new session with these options
   model.session_state = "in-session";
 
-  //TODO: update to model.menu_container.replaceChildren()
-  //      once color-picker and scratch-area are implemented
+  /*
+  if (model.scratch_area) {
+    model.scratch_container.replaceChildren(
+      model.scratch_canvas!,
+      model.color_preview
+    );
+    model.color_picker_container.replaceChildren(
+      model.slider_r,
+      model.slider_g,
+      model.slider_b
+    );
+    model.menu_container.replaceChildren(
+      model.scratch_container,
+      model.color_picker_container,
+      model.button_container
+    );
+  } else {
+    model.scratch_container.replaceChildren();
+    model.color_picker_container.replaceChildren(
+      model.color_preview,
+      model.slider_r,
+      model.slider_g,
+      model.slider_b
+    );
+    model.menu_container.replaceChildren(
+      model.color_picker_container,
+      model.button_container
+    );
+  }
+  */
+
   model.button_container.replaceChildren(
     model.menu_button,
     model.brush_button,
@@ -127,6 +156,7 @@ function updateButtonStartSession(model: Model) {
   model.historyBuffer.clear();
   updateHomeView(model);
   model.drawUniformBuffer.pushClearAll();
+  model.drawUniformBuffer.pushScratchClear();
 }
 
 function updateButtonEndSession(model: Model) {

@@ -2,7 +2,6 @@ import {
   create_texture,
   updateCompositeBindgroup,
 } from "../graphics/wgpu_initializers";
-import { mainLoop } from "../main";
 import { type Model } from "../types/Model";
 import type { PointerType } from "../types/PaeyentEventBuffer";
 
@@ -338,6 +337,9 @@ export function handlers_init(model: Model, document: Document) {
       model.eventBuffer.pushUIEvent("button-about");
     }
   });
+
+  // Initialize scratch handlers if scratch area is enabled
+  scratch_handlers_init(model);
 }
 
 /* pointer input handlers */
@@ -361,4 +363,42 @@ export function onSliderBlue(event: Event, model: Model) {
   if (event.target === model.slider_b) {
     model.eventBuffer.pushUIEvent("input-slider-blue");
   }
+}
+
+function scratch_handlers_init(model: Model) {
+  if (!model.scratch_canvas) {
+    return;
+  }
+
+  const GRID_COLS = 12;
+  const GRID_ROWS = 2;
+
+  model.onScratchPointerDown = (event: Event) => {
+    const e = event as PointerEvent;
+    const rect = model.scratch_canvas!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Calculate which cell was clicked
+    const cellWidth = rect.width / GRID_COLS;
+    const cellHeight = rect.height / GRID_ROWS;
+    const col = Math.floor(x / cellWidth);
+    const row = Math.floor(y / cellHeight);
+
+    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+      // Directly queue the scratch render with current color
+      model.drawUniformBuffer.pushScratchAppend(
+        col,
+        row,
+        model.color[0],
+        model.color[1],
+        model.color[2]
+      );
+    }
+  };
+
+  model.scratch_canvas.addEventListener(
+    "pointerdown",
+    model.onScratchPointerDown
+  );
 }

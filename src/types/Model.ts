@@ -85,6 +85,7 @@ export interface Model {
 
   /* menu state */
   menu_container: Element;
+  scratch_container: Element;
   color_picker_container: Element;
   button_container: Element;
   modal_container: HTMLDivElement;
@@ -144,6 +145,23 @@ export interface Model {
   image_dimensions_type: "auto" | "custom";
   image_width?: number;
   image_height?: number;
+
+  /* scratch area state */
+  scratch_canvas?: HTMLCanvasElement;
+  scratch_surface?: GPUCanvasContext;
+  scratch_texture?: GPUTexture;
+  scratch_texture_view?: GPUTextureView;
+  scratch_pipeline?: GPURenderPipeline;
+  scratch_grid_pipeline?: GPURenderPipeline;
+  scratch_composite_pipeline?: GPURenderPipeline;
+  scratch_bindgroup?: GPUBindGroup;
+  scratch_composite_bindgroup?: GPUBindGroup;
+  scratch_rpd_clear?: GPURenderPassDescriptor;
+  scratch_rpd_append?: GPURenderPassDescriptor;
+  scratch_rpd_composite?: GPURenderPassDescriptor;
+  scratch_width?: number;
+  scratch_height?: number;
+  onScratchPointerDown?: (event: Event) => void;
 
   /* handlers that are set/unset */
   handleOnce: { once: boolean };

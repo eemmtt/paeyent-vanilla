@@ -21,6 +21,8 @@ export const RenderPassLookup = {
   "rectangle-replace-anno": 11,
   "circle-append-anno": 12,
   "circle-replace-anno": 13,
+  "scratch-clear": 14,
+  "scratch-append": 15,
 } as const;
 
 export const RenderPassHandlers = [
@@ -38,6 +40,8 @@ export const RenderPassHandlers = [
   onRectangleReplaceAnno,
   onCircleAppendAnno,
   onCircleReplaceAnno,
+  onClearScratch,
+  onAppendScratch,
 ] as const;
 
 //TODO: batch repeated calls when recreating background from operation history
@@ -75,6 +79,26 @@ export function wgpu_render(model: Model) {
     pass.setPipeline(model.composite_pipeline);
     pass.setBindGroup(0, model.composite_bindgroup);
     pass.setBindGroup(1, model.composite_uniform_bindgroup);
+    pass.draw(4, 1);
+    pass.end();
+  }
+
+  // Composite scratch texture to scratch canvas if enabled
+  if (
+    model.scratch_surface &&
+    model.scratch_rpd_composite &&
+    model.scratch_composite_pipeline &&
+    model.scratch_composite_bindgroup
+  ) {
+    const scratchView = model.scratch_surface.getCurrentTexture().createView();
+    (
+      model.scratch_rpd_composite
+        .colorAttachments as GPURenderPassColorAttachment[]
+    )[0].view = scratchView;
+
+    const pass = encoder.beginRenderPass(model.scratch_rpd_composite);
+    pass.setPipeline(model.scratch_composite_pipeline);
+    pass.setBindGroup(0, model.scratch_composite_bindgroup);
     pass.draw(4, 1);
     pass.end();
   }
@@ -404,4 +428,90 @@ function onCircleReplaceAnno(
   ]);
   renderpass.draw(6, 1);
   renderpass.end();
+}
+
+function onClearScratch(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (
+    !model.scratch_rpd_clear ||
+    !model.scratch_rpd_append ||
+    !model.scratch_grid_pipeline ||
+    !model.scratch_bindgroup
+  ) {
+    console.warn("onClearScratch: scratch area not initialized");
+    return;
+  }
+
+  // Clear scratch texture to white
+  encoder.beginRenderPass(model.scratch_rpd_clear).end();
+
+  // Redraw grid lines
+  // model.drawUniformBuffer.setTextureDims(
+  //   dataIdx,
+  //   model.scratch_width!,
+  //   model.scratch_height!
+  // );
+
+  // model.device.queue.writeBuffer(
+  //   model.poly_buffer,
+  //   dataIdx * model.drawUniformBuffer.alignedSize,
+  //   model.drawUniformBuffer.data,
+  //   dataIdx * model.drawUniformBuffer.stride +
+  //     model.drawUniformBuffer.metaStride,
+  //   model.drawUniformBuffer.uniformStride
+  // );
+
+  // const pass = encoder.beginRenderPass(model.scratch_rpd_append);
+  // pass.setPipeline(model.scratch_grid_pipeline);
+  // pass.setBindGroup(0, model.scratch_bindgroup, [
+  //   dataIdx * model.drawUniformBuffer.alignedSize,
+  // ]);
+  // pass.draw(6, 1);
+  // pass.end();
+}
+
+function onAppendScratch(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (
+    !model.scratch_rpd_append ||
+    !model.scratch_pipeline ||
+    !model.scratch_bindgroup
+  ) {
+    console.warn("onAppendScratch: scratch area not initialized");
+    return;
+  }
+
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onAppendScratch: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.scratch_width!,
+    model.scratch_height!
+  );
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
+  );
+
+  const pass = encoder.beginRenderPass(model.scratch_rpd_append);
+  pass.setPipeline(model.scratch_pipeline);
+  pass.setBindGroup(0, model.scratch_bindgroup, [
+    dataIdx * model.drawUniformBuffer.alignedSize,
+  ]);
+  pass.draw(6, 1);
+  pass.end();
 }

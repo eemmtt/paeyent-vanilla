@@ -384,6 +384,43 @@ export class DrawUniformBuffer {
     this.top++;
   }
 
+  pushScratchClear(): void {
+    if (this.top === this.capacity - 1) {
+      console.warn("DrawUniformBuffer.pushScratchClear(): full");
+      return;
+    }
+    this.view.setUint8(
+      this.top * this.stride + this.offsetType,
+      RenderPassLookup["scratch-clear"]
+    );
+    this.top++;
+  }
+
+  pushScratchAppend(
+    col: number,
+    row: number,
+    r: number,
+    g: number,
+    b: number
+  ): void {
+    if (this.top === this.capacity - 1) {
+      console.warn("DrawUniformBuffer.pushScratchAppend(): full");
+      return;
+    }
+    this.view.setUint8(
+      this.top * this.stride + this.offsetType,
+      RenderPassLookup["scratch-append"]
+    );
+    // Store cell col/row in x0/y0 fields
+    this.setf32(this.top * this.stride + this.offsetX0, col);
+    this.setf32(this.top * this.stride + this.offsetY0, row);
+    this.setf32(this.top * this.stride + this.offsetRed, r);
+    this.setf32(this.top * this.stride + this.offsetGreen, g);
+    this.setf32(this.top * this.stride + this.offsetBlue, b);
+    this.setf32(this.top * this.stride + this.offsetAlpha, 1.0);
+    this.top++;
+  }
+
   pushFromBuffer(fromBuffer: DrawUniformBuffer, fromIdx: number) {
     if (this.top === this.capacity - 1) {
       console.warn(
