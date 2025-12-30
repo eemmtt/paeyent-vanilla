@@ -257,7 +257,10 @@ async function updateButtonSave(model: Model) {
     ctx.putImageData(imgData, 0, 0);
 
     // convert to blob and download
-    const blob = await offscreen.convertToBlob({ type: "image/png" });
+    const blob = await offscreen.convertToBlob({
+      type: "image/png",
+      quality: 1.0,
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
