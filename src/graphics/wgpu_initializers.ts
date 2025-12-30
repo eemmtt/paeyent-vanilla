@@ -85,7 +85,8 @@ export async function wgpu_init(
     device,
     textureWidth,
     textureHeight,
-    "clearColor"
+    "clearColor",
+    true // copyable for save-to-file
   );
   const [fg_texture, fg_texture_view] = create_texture(
     format,
@@ -311,7 +312,8 @@ export function create_texture(
   device: GPUDevice,
   textureWidth: number,
   textureHeight: number,
-  fill: FillStyle
+  fill: FillStyle,
+  copyable: boolean = false
 ): [GPUTexture, GPUTextureView] {
   let texture_desc: GPUTextureDescriptor = {
     size: {
@@ -323,7 +325,8 @@ export function create_texture(
     usage:
       GPUTextureUsage.RENDER_ATTACHMENT |
       GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST,
+      GPUTextureUsage.COPY_DST |
+      (copyable ? GPUTextureUsage.COPY_SRC : 0),
   };
   let texture = device.createTexture(texture_desc);
 
@@ -821,7 +824,8 @@ export function updateImageDimensions(model: Model) {
     model.device,
     clampedWidth,
     clampedHeight,
-    "clearColor"
+    "clearColor",
+    true // copyable for save-to-file
   );
 
   const composite_bindgroup_layout = model.device.createBindGroupLayout({

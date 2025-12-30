@@ -197,8 +197,80 @@ function updateButtonAbout(model: Model) {
   }
 }
 
-function updateButtonSave(_model: Model) {
-  alert("TODO: Implement save to file");
+async function updateButtonSave(model: Model) {
+  const { device, bg_texture, textureWidth, textureHeight } = model;
+
+  // bytes per row must be aligned to 256 bytes for WebGPU
+  const bytesPerPixel = 4;
+  const unalignedBytesPerRow = textureWidth * bytesPerPixel;
+  const align = 256;
+  const bytesPerRow = Math.ceil(unalignedBytesPerRow / align) * align;
+  const bufferSize = bytesPerRow * textureHeight;
+
+  // create a buffer to copy the texture into
+  const buffer = device.createBuffer({
+    size: bufferSize,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+
+  try {
+    // copy texture to buffer
+    const encoder = device.createCommandEncoder();
+    encoder.copyTextureToBuffer(
+      { texture: bg_texture },
+      { buffer, bytesPerRow },
+      { width: textureWidth, height: textureHeight }
+    );
+    device.queue.submit([encoder.finish()]);
+
+    // wait for the GPU to finish and map the buffer
+    await buffer.mapAsync(GPUMapMode.READ);
+    const mappedData = new Uint8Array(buffer.getMappedRange());
+
+    // create image data, handling row padding and BGRA -> RGBA conversion
+    const imageData = new Uint8Array(textureWidth * textureHeight * 4);
+    for (let y = 0; y < textureHeight; y++) {
+      for (let x = 0; x < textureWidth; x++) {
+        const srcIdx = y * bytesPerRow + x * 4;
+        const dstIdx = (y * textureWidth + x) * 4;
+        // BGRA -> RGBA
+        imageData[dstIdx + 0] = mappedData[srcIdx + 2]; // R <- B
+        imageData[dstIdx + 1] = mappedData[srcIdx + 1]; // G <- G
+        imageData[dstIdx + 2] = mappedData[srcIdx + 0]; // B <- R
+        imageData[dstIdx + 3] = mappedData[srcIdx + 3]; // A <- A
+      }
+    }
+    buffer.unmap();
+
+    // use an offscreen canvas to create the PNG
+    const offscreen = new OffscreenCanvas(textureWidth, textureHeight);
+    const ctx = offscreen.getContext("2d");
+    if (!ctx) {
+      console.error("Failed to get 2d context for offscreen canvas");
+      return;
+    }
+    const imgData = new ImageData(
+      new Uint8ClampedArray(imageData.buffer),
+      textureWidth,
+      textureHeight
+    );
+    ctx.putImageData(imgData, 0, 0);
+
+    // convert to blob and download
+    const blob = await offscreen.convertToBlob({ type: "image/png" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const date = new Date();
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    a.download = `paeyent-${yyyy}-${mm}-${dd}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    buffer.destroy();
+  }
 }
 
 function updateButtonShare(_model: Model) {
