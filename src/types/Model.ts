@@ -57,6 +57,7 @@ export interface Model {
   rpd_replaceFg: GPURenderPassDescriptor;
   rpd_replaceBg: GPURenderPassDescriptor;
   rpd_replaceAnno: GPURenderPassDescriptor;
+  rpd_appendFg: GPURenderPassDescriptor;
   rpd_appendBg: GPURenderPassDescriptor;
   rpd_appendAnno: GPURenderPassDescriptor;
   rpd_replaceComposite: GPURenderPassDescriptor;

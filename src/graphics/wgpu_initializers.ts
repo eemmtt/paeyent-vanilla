@@ -179,6 +179,17 @@ export async function wgpu_init(
     ],
   };
 
+  const rpd_appendFg: GPURenderPassDescriptor = {
+    label: "Append Foreground",
+    colorAttachments: [
+      {
+        view: fg_texture_view,
+        loadOp: "load",
+        storeOp: "store",
+      },
+    ],
+  };
+
   const rpd_appendBg: GPURenderPassDescriptor = {
     label: "Append Background",
     colorAttachments: [
@@ -285,6 +296,7 @@ export async function wgpu_init(
     rpd_replaceFg,
     rpd_replaceBg,
     rpd_replaceAnno,
+    rpd_appendFg,
     rpd_appendBg,
     rpd_appendAnno,
     rpd_replaceComposite,
@@ -890,6 +902,9 @@ export function updateImageDimensions(model: Model) {
   // update render pass descriptors with new texture views
   (
     model.rpd_replaceFg.colorAttachments as GPURenderPassColorAttachment[]
+  )[0].view = fg_texture_view;
+  (
+    model.rpd_appendFg.colorAttachments as GPURenderPassColorAttachment[]
   )[0].view = fg_texture_view;
   (
     model.rpd_replaceBg.colorAttachments as GPURenderPassColorAttachment[]

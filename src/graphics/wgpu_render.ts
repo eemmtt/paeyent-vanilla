@@ -23,6 +23,7 @@ export const RenderPassLookup = {
   "circle-replace-anno": 13,
   "scratch-clear": 14,
   "scratch-append": 15,
+  "fan-append-fg": 16,
 } as const;
 
 export const RenderPassHandlers = [
@@ -42,6 +43,7 @@ export const RenderPassHandlers = [
   onCircleReplaceAnno,
   onClearScratch,
   onAppendScratch,
+  onFanAppendFg,
 ] as const;
 
 //TODO: batch repeated calls when recreating background from operation history
@@ -269,6 +271,40 @@ function onFanAppendBg(
   encoder.beginRenderPass(model.rpd_replaceFg).end();
 
   const renderpass = encoder.beginRenderPass(model.rpd_appendBg);
+  renderpass.setPipeline(model.fan_pipeline);
+  renderpass.setBindGroup(0, model.poly_bindgroup, [
+    dataIdx * model.drawUniformBuffer.alignedSize,
+  ]);
+  renderpass.draw(3, 1);
+  renderpass.end();
+}
+
+function onFanAppendFg(
+  model: Model,
+  encoder: GPUCommandEncoder,
+  dataIdx: number
+) {
+  if (dataIdx === -1 || dataIdx >= model.drawUniformBuffer.top) {
+    console.warn(`onFanAppendFg: invalid dataIdx ${dataIdx}`);
+    return;
+  }
+
+  model.drawUniformBuffer.setTextureDims(
+    dataIdx,
+    model.textureWidth,
+    model.textureHeight
+  );
+
+  model.device.queue.writeBuffer(
+    model.poly_buffer,
+    dataIdx * model.drawUniformBuffer.alignedSize,
+    model.drawUniformBuffer.data,
+    dataIdx * model.drawUniformBuffer.stride +
+      model.drawUniformBuffer.metaStride,
+    model.drawUniformBuffer.uniformStride
+  );
+
+  const renderpass = encoder.beginRenderPass(model.rpd_appendFg);
   renderpass.setPipeline(model.fan_pipeline);
   renderpass.setBindGroup(0, model.poly_bindgroup, [
     dataIdx * model.drawUniformBuffer.alignedSize,

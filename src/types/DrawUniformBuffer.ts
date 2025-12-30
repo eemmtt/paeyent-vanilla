@@ -204,6 +204,42 @@ export class DrawUniformBuffer {
     this.top++;
   }
 
+  pushTriangleAppendFg(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    r: number,
+    g: number,
+    b: number
+  ): void {
+    if (this.top === this.capacity - 1) {
+      console.warn(
+        "DrawUniformBuffer.pushTriangleAppendFg(): full, dropping event"
+      );
+      return;
+    }
+
+    this.view.setUint8(
+      this.top * this.stride + this.offsetType,
+      RenderPassLookup["fan-append-fg"]
+    );
+    this.setf32(this.top * this.stride + this.offsetX0, x0);
+    this.setf32(this.top * this.stride + this.offsetY0, y0);
+    this.setf32(this.top * this.stride + this.offsetX1, x1);
+    this.setf32(this.top * this.stride + this.offsetY1, y1);
+    this.setf32(this.top * this.stride + this.offsetX2, x2);
+    this.setf32(this.top * this.stride + this.offsetY2, y2);
+    this.setf32(this.top * this.stride + this.offsetRed, r);
+    this.setf32(this.top * this.stride + this.offsetGreen, g);
+    this.setf32(this.top * this.stride + this.offsetBlue, b);
+    this.setf32(this.top * this.stride + this.offsetAlpha, 1.0);
+
+    this.top++;
+  }
+
   pushCircleReplaceAnno(
     x: number,
     y: number,

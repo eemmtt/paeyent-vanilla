@@ -262,7 +262,30 @@ function fan_stop(model: Model, textureX: number, textureY: number) {
       model.color[2]
     );
 
-    //update midpoint
+    // store previous midpoint (for redrawing last committed triangle during hover)
+    model.pts[2 * PT_STRIDE + 0] = model.pts[1 * PT_STRIDE + 0];
+    model.pts[2 * PT_STRIDE + 1] = model.pts[1 * PT_STRIDE + 1];
+    // update current midpoint
+    model.pts[1 * PT_STRIDE + 0] = textureX;
+    model.pts[1 * PT_STRIDE + 1] = textureY;
+    model.num_pts = 3;
+  } else if (model.num_pts == 3) {
+    model.drawUniformBuffer.pushTriangleAppendBg(
+      model.pts[0 * PT_STRIDE],
+      model.pts[0 * PT_STRIDE + 1],
+      model.pts[1 * PT_STRIDE],
+      model.pts[1 * PT_STRIDE + 1],
+      textureX,
+      textureY,
+      model.color[0],
+      model.color[1],
+      model.color[2]
+    );
+
+    // store previous midpoint (for redrawing last committed triangle during hover)
+    model.pts[2 * PT_STRIDE + 0] = model.pts[1 * PT_STRIDE + 0];
+    model.pts[2 * PT_STRIDE + 1] = model.pts[1 * PT_STRIDE + 1];
+    // update current midpoint
     model.pts[1 * PT_STRIDE + 0] = textureX;
     model.pts[1 * PT_STRIDE + 1] = textureY;
   }
@@ -292,6 +315,33 @@ function fan_hover(model: Model, textureX: number, textureY: number) {
     );
   } else if (model.num_pts == 2) {
     model.drawUniformBuffer.pushTriangleReplaceFg(
+      model.pts[0 * PT_STRIDE],
+      model.pts[0 * PT_STRIDE + 1],
+      model.pts[1 * PT_STRIDE],
+      model.pts[1 * PT_STRIDE + 1],
+      textureX,
+      textureY,
+      model.color[0],
+      model.color[1],
+      model.color[2]
+    );
+  } else if (model.num_pts == 3) {
+    // Redraw the last committed triangle to fg alongside the preview.
+    // This avoids a 1px seam caused by linear texture filtering when
+    // compositing bg and fg textures that share an edge.
+    model.drawUniformBuffer.pushTriangleReplaceFg(
+      model.pts[0 * PT_STRIDE],
+      model.pts[0 * PT_STRIDE + 1],
+      model.pts[2 * PT_STRIDE],
+      model.pts[2 * PT_STRIDE + 1],
+      model.pts[1 * PT_STRIDE],
+      model.pts[1 * PT_STRIDE + 1],
+      model.color[0],
+      model.color[1],
+      model.color[2]
+    );
+    // Draw the preview triangle
+    model.drawUniformBuffer.pushTriangleAppendFg(
       model.pts[0 * PT_STRIDE],
       model.pts[0 * PT_STRIDE + 1],
       model.pts[1 * PT_STRIDE],
