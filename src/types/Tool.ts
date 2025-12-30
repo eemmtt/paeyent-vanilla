@@ -58,9 +58,9 @@ function line_pointerdown(model: Model, idx: number) {
     (viewportDeviceY - centerDeviceY) / model.zoom + model.texturePanY;
 
   if (!model.is_drawing) {
-    line_start(model, textureX, textureY);
+    line_start(model, textureX, textureY, viewportDeviceX, viewportDeviceY);
   } else {
-    line_stop(model, textureX, textureY);
+    line_stop(model, textureX, textureY, viewportDeviceX, viewportDeviceY);
   }
 }
 function line_pointerup(_model: Model, _idx: number) {}
@@ -84,25 +84,46 @@ function line_pointermove(model: Model, idx: number) {
   }
 }
 
-function line_start(model: Model, x: number, y: number) {
+function line_start(
+  model: Model,
+  textureX: number,
+  textureY: number,
+  viewportX: number,
+  viewportY: number
+) {
   model.is_drawing = true;
-  model.pts[0 * PT_STRIDE + 0] = x;
-  model.pts[0 * PT_STRIDE + 1] = y;
+  model.pts[0 * PT_STRIDE + 0] = textureX;
+  model.pts[0 * PT_STRIDE + 1] = textureY;
   model.num_pts = 1;
 
   model.canvas.addEventListener("pointermove", model.onPointerMove);
+  model.drawUniformBuffer.pushCircleReplaceAnno(
+    viewportX,
+    viewportY,
+    model.marker_radius,
+    1,
+    1,
+    1
+  );
   return;
 }
-function line_stop(model: Model, x: number, y: number) {
+function line_stop(
+  model: Model,
+  textureX: number,
+  textureY: number,
+  viewportX: number,
+  viewportY: number
+) {
   const startX = model.pts[0 * PT_STRIDE];
   const startY = model.pts[0 * PT_STRIDE + 1];
 
   // draw line to background
+  model.drawUniformBuffer.pushClearAnno();
   model.drawUniformBuffer.pushLineAppendBg(
     startX,
     startY,
-    x,
-    y,
+    textureX,
+    textureY,
     model.color[0],
     model.color[1],
     model.color[2]
@@ -110,23 +131,23 @@ function line_stop(model: Model, x: number, y: number) {
 
   const radius_squared = model.marker_radius * model.marker_radius;
   const dist_squared =
-    (x - model.pts[0 + 0]) ** 2 + (y - model.pts[0 + 1]) ** 2;
+    (textureX - model.pts[0 + 0]) ** 2 + (textureY - model.pts[0 + 1]) ** 2;
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
     model.canvas.removeEventListener("pointermove", model.onPointerMove);
   } else {
-    line_start(model, x, y);
+    line_start(model, textureX, textureY, viewportX, viewportY);
   }
   return;
 }
 
-function line_hover(model: Model, x: number, y: number) {
+function line_hover(model: Model, textureX: number, textureY: number) {
   // draw line to foreground
   model.drawUniformBuffer.pushLineReplaceFg(
     model.pts[0 * PT_STRIDE],
     model.pts[0 * PT_STRIDE + 1],
-    x,
-    y,
+    textureX,
+    textureY,
     model.color[0],
     model.color[1],
     model.color[2]
@@ -136,8 +157,10 @@ function line_hover(model: Model, x: number, y: number) {
 function line_cancel(model: Model, _idx: number) {
   model.is_drawing = false;
   model.num_pts = 0;
-  model.drawUniformBuffer.pushClearFg();
   model.canvas.removeEventListener("pointermove", model.onPointerMove);
+
+  model.drawUniformBuffer.pushClearFg();
+  model.drawUniformBuffer.pushClearAnno();
 }
 
 /* POLY FAN */
@@ -158,7 +181,7 @@ function fan_pointerdown(model: Model, idx: number) {
     (viewportDeviceY - centerDeviceY) / model.zoom + model.texturePanY;
 
   if (!model.is_drawing) {
-    fan_start(model, textureX, textureY);
+    fan_start(model, textureX, textureY, viewportDeviceX, viewportDeviceY);
   } else {
     fan_stop(model, textureX, textureY);
   }
@@ -186,75 +209,83 @@ function fan_pointermove(model: Model, idx: number) {
   }
 }
 
-function fan_start(model: Model, x: number, y: number) {
+function fan_start(
+  model: Model,
+  textureX: number,
+  textureY: number,
+  viewportX: number,
+  viewportY: number
+) {
   model.is_drawing = true;
-  model.pts[0 * PT_STRIDE + 0] = x;
-  model.pts[0 * PT_STRIDE + 1] = y;
+  model.pts[0 * PT_STRIDE + 0] = textureX;
+  model.pts[0 * PT_STRIDE + 1] = textureY;
 
   model.num_pts = 1;
 
   model.canvas.addEventListener("pointermove", model.onPointerMove);
-  model.canvas.addEventListener(
-    "pointerup",
-    model.onPointerUp,
-    model.handleOnce
+  model.drawUniformBuffer.pushCircleReplaceAnno(
+    viewportX,
+    viewportY,
+    model.marker_radius,
+    1.0,
+    1.0,
+    1.0
   );
   return;
 }
-function fan_stop(model: Model, x: number, y: number) {
+function fan_stop(model: Model, textureX: number, textureY: number) {
   if (model.num_pts == 1) {
     model.drawUniformBuffer.pushLineAppendBg(
       model.pts[0 * PT_STRIDE],
       model.pts[0 * PT_STRIDE + 1],
-      x,
-      y,
+      textureX,
+      textureY,
       model.color[0],
       model.color[1],
       model.color[2]
     );
 
     // add midpoint
-    model.pts[1 * PT_STRIDE + 0] = x;
-    model.pts[1 * PT_STRIDE + 1] = y;
+    model.pts[1 * PT_STRIDE + 0] = textureX;
+    model.pts[1 * PT_STRIDE + 1] = textureY;
     model.num_pts = 2;
   } else if (model.num_pts == 2) {
-    // Convert viewport space to texture space and draw triangle to background
     model.drawUniformBuffer.pushTriangleAppendBg(
       model.pts[0 * PT_STRIDE],
       model.pts[0 * PT_STRIDE + 1],
       model.pts[1 * PT_STRIDE],
       model.pts[1 * PT_STRIDE + 1],
-      x,
-      y,
+      textureX,
+      textureY,
       model.color[0],
       model.color[1],
       model.color[2]
     );
 
     //update midpoint
-    model.pts[1 * PT_STRIDE + 0] = x;
-    model.pts[1 * PT_STRIDE + 1] = y;
+    model.pts[1 * PT_STRIDE + 0] = textureX;
+    model.pts[1 * PT_STRIDE + 1] = textureY;
   }
 
   const radius_squared = model.marker_radius * model.marker_radius;
   const dist_squared =
-    (x - model.pts[0 + 0]) ** 2 + (y - model.pts[0 + 1]) ** 2;
+    (textureX - model.pts[0 + 0]) ** 2 + (textureY - model.pts[0 + 1]) ** 2;
   if (dist_squared <= radius_squared) {
     model.is_drawing = false;
     model.num_pts = 0;
 
     model.canvas.removeEventListener("pointermove", model.onPointerMove);
-    model.canvas.removeEventListener("pointerup", model.onPointerUp);
+    model.drawUniformBuffer.pushClearAnno();
   }
   return;
 }
-function fan_hover(model: Model, x: number, y: number) {
+function fan_hover(model: Model, textureX: number, textureY: number) {
   if (model.num_pts == 1) {
     model.drawUniformBuffer.pushLineReplaceFg(
       model.pts[0 * PT_STRIDE],
       model.pts[0 * PT_STRIDE + 1],
-      x,
-      y,
+      textureX,
+      textureY,
       model.color[0],
       model.color[1],
       model.color[2]
@@ -265,8 +296,8 @@ function fan_hover(model: Model, x: number, y: number) {
       model.pts[0 * PT_STRIDE + 1],
       model.pts[1 * PT_STRIDE],
       model.pts[1 * PT_STRIDE + 1],
-      x,
-      y,
+      textureX,
+      textureY,
       model.color[0],
       model.color[1],
       model.color[2]
@@ -281,6 +312,7 @@ function fan_cancel(model: Model, _idx: number) {
   model.canvas.removeEventListener("pointerup", model.onPointerUp);
 
   model.drawUniformBuffer.pushClearFg();
+  model.drawUniformBuffer.pushClearAnno();
 }
 
 /* Pan */
