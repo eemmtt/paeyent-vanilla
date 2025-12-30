@@ -16,20 +16,28 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+    background-color: rgb(100, 100, 100);
+
 }
 
-canvas {
+.viewport-canvas {
   display: block;
   width: 100%;
   height: calc(100vh - 8rem);
 }
 
-.menu-container {
+.scratch-container canvas {
+  display: block;
   width: 100%;
+}
+
+.menu-container {
+  width: calc(100vw);
   height: 8rem;
   display: flex;
   flex-direction: column;
   padding: auto;
+  position: relative;
 }
 
 .scratch-container {
@@ -41,14 +49,28 @@ canvas {
 .color-picker-container {
   width: 100%;
   flex: 1;
-  height: 3rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
 }
 
 .button-container {
   flex: 0 0 auto;
   width: 100%;
-  height: 2rem;
+  height: 1.5rem;
   order: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.button-container button {
+  height: 1rem;
+  background-color: rgb(153, 153, 153);
+  border: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+
 }
 
 .modal-container {
