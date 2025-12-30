@@ -73,6 +73,5 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     if (!on_ring){
         discard;
     }
-    return vec4<f32>(poly.red, poly.green, poly.blue, poly.alpha);
-    //return select(vec4<f32>(0,0,0,0), poly.rgba, on_ring);
+    return vec4<f32>(poly.red * poly.alpha, poly.green * poly.alpha, poly.blue * poly.alpha, poly.alpha);
 }

@@ -56,7 +56,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     );
 
     output.position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
-    output.color = vec4<f32>(poly.red, poly.green, poly.blue, poly.alpha);
+    output.color = vec4<f32>(poly.red * poly.alpha, poly.green * poly.alpha, poly.blue * poly.alpha, poly.alpha);
 
     return output;
 }

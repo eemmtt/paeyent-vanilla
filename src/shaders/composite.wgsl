@@ -60,7 +60,7 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let an = textureSample(annotation_tex, tex_sampler, viewport_uv_coordinates);
 
     // composite fg over bg
-    var aggregate_texture_color = fg.rgb * fg.a + bg.rgb * (1.0 - fg.a);
+    var aggregate_texture_color = fg.rgb + bg.rgb * (1.0 - fg.a);
 
     // composite aggregate texture over background
     let background_and_agg_texture_mix = vec4<f32>(
@@ -69,5 +69,5 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
     );
 
     //composite annotations overtop everything
-    return vec4<f32>(an.rgb * an.a + background_and_agg_texture_mix.rgb * (1.0 - an.a), 1.0);
+    return vec4<f32>(an.rgb + background_and_agg_texture_mix.rgb * (1.0 - an.a), 1.0);
 }
