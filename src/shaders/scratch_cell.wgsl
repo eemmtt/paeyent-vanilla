@@ -27,13 +27,11 @@ struct PolyData {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) device_pos: vec2<f32>,
 }
 
 // Hardcoded grid dimensions
 const GRID_COLS: f32 = 12.0;
 const GRID_ROWS: f32 = 2.0;
-const GRID_LINE_WIDTH: f32 = 1.0;
 
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
@@ -66,37 +64,12 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
         vec2<f32>(ndc_right, ndc_bottom)
     );
 
-    let device_positions = array(
-        vec2<f32>(left, top),
-        vec2<f32>(left, bottom),
-        vec2<f32>(right, top),
-        vec2<f32>(right, top),
-        vec2<f32>(left, bottom),
-        vec2<f32>(right, bottom)
-    );
 
     output.position = vec4<f32>(positions[vertex_index], 0.0, 1.0);
-    output.device_pos = device_positions[vertex_index];
     return output;
 }
 
 @fragment
 fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    let cell_width = poly.texture_device_width / GRID_COLS;
-    let cell_height = poly.texture_device_height / GRID_ROWS;
-
-    // Determine if this pixel is on a grid line
-    let x_mod = input.device_pos.x % cell_width;
-    let y_mod = input.device_pos.y % cell_height;
-
-    let on_vertical_line = x_mod < GRID_LINE_WIDTH || x_mod > (cell_width - GRID_LINE_WIDTH);
-    let on_horizontal_line = y_mod < GRID_LINE_WIDTH || y_mod > (cell_height - GRID_LINE_WIDTH);
-    let on_grid_line = on_vertical_line || on_horizontal_line;
-
-    // Don't overwrite grid lines
-    if (on_grid_line) {
-        discard;
-    }
-
     return vec4<f32>(poly.red, poly.green, poly.blue, poly.alpha);
 }
