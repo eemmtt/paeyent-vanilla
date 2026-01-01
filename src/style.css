@@ -23,7 +23,7 @@ body {
 .viewport-canvas {
   display: block;
   width: 100%;
-  height: calc(100vh - 8rem);
+  height: calc(100vh - 8.8rem);
 }
 
 .scratch-container canvas {
@@ -33,11 +33,17 @@ body {
 
 .menu-container {
   width: calc(100vw);
-  height: 8rem;
+  height: 8.8rem;
   display: flex;
   flex-direction: column;
   padding: auto;
   position: relative;
+}
+
+.visual-buffer {
+  width: 100vw;
+  height: 0.8rem;
+  background-color: rgb(140, 140, 140);
 }
 
 .scratch-container {
